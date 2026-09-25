@@ -84,7 +84,7 @@ function bindSourceButtons(){
 }
 
 async function render(){
-  const state=await chrome.storage.local.get(['sessionClaims','captureState','processingState','uiLang','speakerProfiles']);
+  const state=await chrome.storage.local.get(['sessionClaims','captureState','processingState','uiLang','speakerProfiles','detectedParticipants']);
   const claims=Array.isArray(state.sessionClaims)?state.sessionClaims:[];
   const capture=state.captureState||{};
   const proc=state.processingState||{};
@@ -107,6 +107,10 @@ async function render(){
   }
 
   const profiles=Array.isArray(state.speakerProfiles)?state.speakerProfiles:[];
+  const detected=Array.isArray(state.detectedParticipants)?state.detectedParticipants:[];
+  const assignedNames=new Set(profiles.map(x=>String(x?.displayName||'').toLowerCase()));
+  const freeDetected=detected.filter(x=>!assignedNames.has(String(x?.displayName||'').toLowerCase()));
+  let autoIndex=0;
   document.querySelectorAll('.speaker-row').forEach(row=>{
     const key=row.dataset.speakerKey;
     const p=profiles.find(x=>x?.speakerKey===key);
@@ -119,7 +123,16 @@ async function render(){
       role.value=p.role==='moderator'?'moderator':'participant';
       st.textContent=t('voiceReady');
     }else if(st.dataset.busy!=='1'){
-      st.textContent='';
+      const candidate=freeDetected[autoIndex++]||null;
+      if(candidate){
+        if(document.activeElement!==name)name.value=candidate.displayName||'';
+        role.value=candidate.role==='moderator'?'moderator':'participant';
+        const src=candidate.source==='metadata'?'názov/popis':'úvod relácie';
+        const conf=Number.isFinite(Number(candidate.confidence))?' · '+Math.round(Number(candidate.confidence))+'%':'';
+        st.textContent='Nájdené automaticky: '+src+conf;
+      }else{
+        st.textContent='';
+      }
     }
     btn.textContent=st.dataset.busy==='1'?t('capturing'):t('captureVoice');
     btn.disabled=st.dataset.busy==='1'||capture.active!==true;
