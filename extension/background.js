@@ -1,4 +1,66 @@
 const OFFSCREEN_URL = 'offscreen.html';
+const FUNCTION_URL = 'https://mexrrchqiehzvrefftym.supabase.co/functions/v1/process-audio';
+const PUBLISHABLE_KEY = 'sb_publishable_NZCEN4vfkbyxQrzCa8YR8Q_i4ZQCH2T';
+const BACKEND_TIMEOUT_MS = 45000;
+
+async function appendDebugEvent(stage, details = {}) {
+  try {
+    const { debugEvents = [] } = await chrome.storage.local.get('debugEvents');
+    debugEvents.push({
+      at: new Date().toISOString(),
+      stage,
+      ...details
+    });
+    await chrome.storage.local.set({ debugEvents: debugEvents.slice(-50) });
+  } catch {}
+}
+
+async function processAudioRequest(payload, tabId) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), BACKEND_TIMEOUT_MS);
+  try {
+    await appendDebugEvent('upload_started', {
+      tabId,
+      base64Length: payload?.audioBase64?.length || 0
+    });
+
+    const res = await fetch(FUNCTION_URL, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'apikey': PUBLISHABLE_KEY,
+        'authorization': 'Bearer ' + PUBLISHABLE_KEY
+      },
+      body: JSON.stringify(payload || {}),
+      signal: controller.signal
+    });
+
+    const raw = await res.text();
+    let data = {};
+    try { data = raw ? JSON.parse(raw) : {}; }
+    catch { data = { error: raw || 'Neplatná odpoveď backendu' }; }
+
+    await appendDebugEvent('backend_response', {
+      tabId,
+      status: res.status,
+      ok: res.ok
+    });
+
+    if (!res.ok) {
+      throw new Error(data?.error || `Backend ${res.status}: ${raw.slice(0, 180)}`);
+    }
+
+    return data;
+  } catch (e) {
+    const message = e?.name === 'AbortError'
+      ? 'Backend timeout po 45 sekundách'
+      : (e?.message || String(e));
+    await appendDebugEvent('backend_fetch_error', { tabId, error: message });
+    throw new Error(`Backend fetch: ${message}`);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 function isHttpTab(tab) {
   return !!tab?.id && /^https?:/i.test(tab.url || '');
@@ -174,6 +236,18 @@ async function appendClaims(payload, tabId) {
 }
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg?.target === 'background' && msg?.type === 'PROCESS_AUDIO') {
+    (async () => {
+      try {
+        const data = await processAudioRequest(msg.payload, msg.tabId);
+        sendResponse({ ok: true, data });
+      } catch (e) {
+        sendResponse({ ok: false, error: e?.message || String(e) });
+      }
+    })();
+    return true;
+  }
+
   if (msg?.type === 'GET_ACTIVE_CONTEXT') {
     (async () => {
       const tab = await getCurrentContext();
