@@ -1,4 +1,4 @@
-# faktySKCZ Chrome Extension v0.5.7
+# faktySKCZ Chrome Extension v0.5.8
 
 MVP prerobené z popup rozhrania na natívny Chrome Side Panel.
 
@@ -7,6 +7,8 @@ MVP prerobené z popup rozhrania na natívny Chrome Side Panel.
 - live audio capture z aktívneho tabu bez potreby titulkov
 - 40-sekundové spracovacie bloky pre nižšiu spotrebu API
 - cache-first fact-check: už overené podobné tvrdenia sa znovu nehľadajú na webe
+- OBS/Streamlabs Browser Source URL pre LIVE fact-check
+- samostatný aktérsky overlay s priebežnými počtami verdictov; moderátor je vylúčený
 - backend: Supabase FactCTP / Edge Function `process-audio`
 - side panel otvorený kliknutím na ikonu rozšírenia
 - karty jednotlivých tvrdení
