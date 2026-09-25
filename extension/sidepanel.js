@@ -15,6 +15,8 @@ const dict = {
     streamTitle:'Stream Browser Source', factOverlay:'LIVE fact-check', scoreOverlay:'Aktéri – priebežné počty verdictov',
     copy:'Kopírovať', copied:'Skopírované', streamNote:'V OBS/Streamlabs vlož URL ako Browser Source. Moderátor sa v prehľade aktérov nezobrazuje.',
     speakerTitle:'Aktéri relácie', speakerNote:'Počas hovorenia konkrétneho človeka zadaj meno a zachyť 3 s jeho hlasu. Max. 4 známi rečníci.',
+    actorsNote:'Priebežné počty fact-checkovaných tvrdení v tejto relácii. Nejde o celkové hodnotenie osoby.',
+    checkedClaims:'Fact-checkované tvrdenia', actorWaiting:'Čakám na priradené výroky účastníkov…',
     actorsNote:'Percentá zobrazujú iba rozdelenie fact-checkovaných tvrdení v tejto relácii. Nejde o hodnotenie osoby.',
     checkedClaims:'Fact-checkované tvrdenia', actorWaiting:'Čakám na priradené výroky účastníkov…',
     participant:'Účastník', moderator:'Moderátor', captureVoice:'Zachytiť hlas', capturing:'Nahrávam 3 s…', voiceReady:'Hlas uložený'
@@ -31,6 +33,8 @@ const dict = {
     streamTitle:'Stream Browser Source', factOverlay:'LIVE fact-check', scoreOverlay:'Aktéři – průběžné počty verdiktů',
     copy:'Kopírovat', copied:'Zkopírováno', streamNote:'V OBS/Streamlabs vlož URL jako Browser Source. Moderátor se v přehledu aktérů nezobrazuje.',
     speakerTitle:'Aktéři relace', speakerNote:'Během mluvení konkrétního člověka zadej jméno a zachyť 3 s jeho hlasu. Max. 4 známí mluvčí.',
+    actorsNote:'Průběžné počty fact-checkovaných tvrzení v této relaci. Nejde o celkové hodnocení osoby.',
+    checkedClaims:'Fact-checkovaná tvrzení', actorWaiting:'Čekám na přiřazené výroky účastníků…',
     actorsNote:'Procenta zobrazují pouze rozdělení fact-checkovaných tvrzení v této relaci. Nejde o hodnocení osoby.',
     checkedClaims:'Fact-checkovaná tvrzení', actorWaiting:'Čekám na přiřazené výroky účastníků…',
     participant:'Účastník', moderator:'Moderátor', captureVoice:'Zachytit hlas', capturing:'Nahrávám 3 s…', voiceReady:'Hlas uložen'
