@@ -1,4 +1,4 @@
-# faktySKCZ Chrome Extension v0.6.0
+# faktySKCZ Chrome Extension v0.6.1
 
 MVP prerobené z popup rozhrania na natívny Chrome Side Panel.
 
@@ -21,7 +21,8 @@ MVP prerobené z popup rozhrania na natívny Chrome Side Panel.
 - verdikt + percento istoty zhody/overenia
 - čas vo videu, ak je na stránke HTML5 video
 - zdroje/detail, pokiaľ ich backend vráti
-- taby Prehľad / Tvrdenia / Sporné / Vzorce
+- taby Prehľad / Tvrdenia / Sporné / Vzorce / Aktéri
+- Aktéri = percentuálne rozdelenie verdictov z fact-checkovaných tvrdení každého účastníka; bez jedného celkového skóre osoby
 - Vzorce = iba opakované tvrdenia v rámci aktuálnej session
 - SK/CZ prepínač UI
 - bez agregovaného skóre politika alebo rečníka
