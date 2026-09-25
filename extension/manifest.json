@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "faktySKCZ — Live Fact Check",
+  "version": "0.5.0",
+  "description": "Live CZ/SK fact-checking z audia aktuálneho tabu v bočnom paneli.",
+  "minimum_chrome_version": "116",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "tabCapture",
+    "offscreen",
+    "sidePanel"
+  ],
+  "action": {
+    "default_title": "Otvoriť faktySKCZ"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "host_permissions": [
+    "https://mexrrchqiehzvrefftym.supabase.co/*"
+  ]
+}
