@@ -2,7 +2,7 @@ const OFFSCREEN_URL = 'offscreen.html';
 const FUNCTION_URL = 'https://mexrrchqiehzvrefftym.supabase.co/functions/v1/process-audio';
 const OVERLAY_API_URL = 'https://mexrrchqiehzvrefftym.supabase.co/functions/v1/overlay-api';
 const PUBLISHABLE_KEY = 'sb_publishable_NZCEN4vfkbyxQrzCa8YR8Q_i4ZQCH2T';
-const BACKEND_TIMEOUT_MS = 45000;
+const BACKEND_TIMEOUT_MS = 120000;
 
 async function appendDebugEvent(stage, details = {}) {
   try {
@@ -25,14 +25,16 @@ async function processAudioRequest(payload, tabId) {
       base64Length: payload?.audioBase64?.length || 0
     });
 
-    const { rollingTranscript = '', captureState = {} } = await chrome.storage.local.get(['rollingTranscript','captureState']);
+    const { rollingTranscript = '', captureState = {}, speakerProfiles = [] } =
+      await chrome.storage.local.get(['rollingTranscript','captureState','speakerProfiles']);
     const requestPayload = {
       ...(payload || {}),
       contextBefore: String(rollingTranscript || '').slice(-2500),
-      sessionId: captureState.sessionId || null,
+      sessionId: payload?.sessionId || captureState.sessionId || null,
       sourceUrl: captureState.url || '',
       mediaTitle: captureState.title || '',
-      sessionStartedAt: captureState.startedAt || null
+      sessionStartedAt: captureState.startedAt || null,
+      speakerProfiles: Array.isArray(speakerProfiles) ? speakerProfiles.slice(0,4) : []
     };
 
     const res = await fetch(FUNCTION_URL, {
@@ -156,6 +158,7 @@ async function startCaptureForTab(tab) {
   await chrome.storage.local.set({
     sessionClaims: [],
     rollingTranscript: '',
+    speakerProfiles: [],
     processingState: { phase: 'listening', error: null },
     captureState: {
       active: true,
@@ -174,7 +177,8 @@ async function startCaptureForTab(tab) {
     target:'offscreen',
     type:'START_AUDIO',
     streamId,
-    tabId:tab.id
+    tabId:tab.id,
+    sessionId
   });
   if (reply?.ok === false) throw new Error(reply.error || 'Audio vstup sa nepodarilo spustiť.');
 
@@ -424,6 +428,54 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       });
       sendResponse({ ok: true, archived });
     })();
+    return true;
+  }
+
+  if (msg?.type === 'CAPTURE_SPEAKER_REFERENCE') {
+    (async () => {
+      const speakerKey = String(msg.speakerKey || '').trim();
+      const displayName = String(msg.displayName || '').trim();
+      const role = msg.role === 'moderator' ? 'moderator' : 'participant';
+
+      if (!/^p[1-4]$/.test(speakerKey)) {
+        sendResponse({ ok:false, error:'Neplatný slot rečníka.' });
+        return;
+      }
+      if (!displayName) {
+        sendResponse({ ok:false, error:'Zadaj meno rečníka.' });
+        return;
+      }
+
+      const { captureState = {}, speakerProfiles = [] } =
+        await chrome.storage.local.get(['captureState','speakerProfiles']);
+      if (!captureState.active) {
+        sendResponse({ ok:false, error:'Najprv spusti LIVE overovanie.' });
+        return;
+      }
+
+      const ref = await chrome.runtime.sendMessage({
+        target:'offscreen',
+        type:'CAPTURE_REFERENCE',
+        durationMs:3000
+      });
+      if (!ref?.ok || !ref.audioBase64) {
+        sendResponse({ ok:false, error:ref?.error || 'Hlasovú ukážku sa nepodarilo zachytiť.' });
+        return;
+      }
+
+      const next = Array.isArray(speakerProfiles) ? [...speakerProfiles] : [];
+      const profile = {
+        speakerKey,
+        displayName,
+        role,
+        referenceDataUrl:`data:${ref.mimeType || 'audio/webm'};base64,${ref.audioBase64}`,
+        capturedAt:new Date().toISOString()
+      };
+      const idx = next.findIndex(x => x?.speakerKey === speakerKey);
+      if (idx >= 0) next[idx] = profile; else next.push(profile);
+      await chrome.storage.local.set({ speakerProfiles: next.slice(0,4) });
+      sendResponse({ ok:true, profile:{speakerKey,displayName,role,capturedAt:profile.capturedAt} });
+    })().catch(e=>sendResponse({ok:false,error:e?.message||String(e)}));
     return true;
   }
 
