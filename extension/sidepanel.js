@@ -11,7 +11,9 @@ const dict = {
     listening:'Počúvam audio aktuálneho tabu…', transcribing:'Prepisujem a analyzujem posledný úsek…', stopped:'Overovanie je zastavené.',
     noVideo:'Klikni na ikonu faktySKCZ pri otvorenom videu', emptyTitle:'Zatiaľ bez tvrdení', emptyBody:'Po spustení sa sem budú pridávať overiteľné výroky.',
     noDisputed:'Zatiaľ bez sporných tvrdení', noPatterns:'Zatiaľ bez opakovaných tvrdení', sources:'Zdroje', noSources:'Zdroj nie je v tomto výsledku dostupný.',
-    confidence:'istota', repeats:'× opakované', timeFallback:'od spustenia'
+    confidence:'istota', repeats:'× opakované', timeFallback:'od spustenia',
+    streamTitle:'Stream Browser Source', factOverlay:'LIVE fact-check', scoreOverlay:'Aktéri – priebežné počty verdictov',
+    copy:'Kopírovať', copied:'Skopírované', streamNote:'V OBS/Streamlabs vlož URL ako Browser Source. Moderátor sa v prehľade aktérov nezobrazuje.'
   },
   cz: {
     summary:'Přehled', facts:'Tvrzení', disputed:'Sporné', patterns:'Vzorce', captured:'Zachycená tvrzení',
@@ -21,7 +23,9 @@ const dict = {
     listening:'Poslouchám audio aktuálního panelu…', transcribing:'Přepisuji a analyzuji poslední úsek…', stopped:'Ověřování je zastaveno.',
     noVideo:'Klikni na ikonu faktySKCZ při otevřeném videu', emptyTitle:'Zatím bez tvrzení', emptyBody:'Po spuštění se sem budou přidávat ověřitelná tvrzení.',
     noDisputed:'Zatím bez sporných tvrzení', noPatterns:'Zatím bez opakovaných tvrzení', sources:'Zdroje', noSources:'Zdroj není v tomto výsledku dostupný.',
-    confidence:'jistota', repeats:'× opakováno', timeFallback:'od spuštění'
+    confidence:'jistota', repeats:'× opakováno', timeFallback:'od spuštění',
+    streamTitle:'Stream Browser Source', factOverlay:'LIVE fact-check', scoreOverlay:'Aktéři – průběžné počty verdiktů',
+    copy:'Kopírovat', copied:'Zkopírováno', streamNote:'V OBS/Streamlabs vlož URL jako Browser Source. Moderátor se v přehledu aktérů nezobrazuje.'
   }
 };
 const t = k => dict[lang][k] || k;
@@ -85,6 +89,18 @@ async function render(){
   document.documentElement.lang=lang;
   document.querySelectorAll('[data-i18n]').forEach(el=>el.textContent=t(el.dataset.i18n));
   $('startBtn').textContent=t('start'); $('stopBtn').textContent=t('stop'); $('clearBtn').textContent=t('clear');
+  $('copyFactOverlay').textContent=t('copy'); $('copyScoreOverlay').textContent=t('copy');
+
+  const overlay=capture.streamOverlay||null;
+  if(overlay?.factcheckUrl&&overlay?.scoreboardUrl){
+    $('streamBox').classList.remove('hidden');
+    $('factOverlayUrl').value=overlay.factcheckUrl;
+    $('scoreOverlayUrl').value=overlay.scoreboardUrl;
+  }else{
+    $('streamBox').classList.add('hidden');
+    $('factOverlayUrl').value='';
+    $('scoreOverlayUrl').value='';
+  }
 
   $('mediaTitle').textContent=capture.title||t('noVideo');
   $('mediaDot').classList.toggle('live',capture.active===true);
@@ -128,5 +144,20 @@ $('startBtn').addEventListener('click',async()=>{
 $('stopBtn').addEventListener('click',async()=>{await chrome.runtime.sendMessage({type:'STOP_CAPTURE'});await render()});
 $('clearBtn').addEventListener('click',async()=>{await chrome.runtime.sendMessage({type:'CLEAR_SESSION'});await render()});
 $('langBtn').addEventListener('click',async()=>{lang=lang==='sk'?'cz':'sk';await chrome.storage.local.set({uiLang:lang});await render()});
+async function copyOverlay(inputId,buttonId){
+  const input=$(inputId),button=$(buttonId);
+  if(!input?.value)return;
+  try{
+    await navigator.clipboard.writeText(input.value);
+  }catch{
+    input.focus();input.select();
+    try{document.execCommand('copy')}catch{}
+  }
+  const old=button.textContent;
+  button.textContent=t('copied');
+  setTimeout(()=>{button.textContent=t('copy')||old},1200);
+}
+$('copyFactOverlay').addEventListener('click',()=>copyOverlay('factOverlayUrl','copyFactOverlay'));
+$('copyScoreOverlay').addEventListener('click',()=>copyOverlay('scoreOverlayUrl','copyScoreOverlay'));
 chrome.storage.onChanged.addListener(()=>render());
 render();
