@@ -4,7 +4,7 @@ let stopRequested = false;
 let currentRecorder = null;
 let tabId = null;
 let sequenceNo = 0;
-const SLICE_MS = 7000;
+const SLICE_MS = 40000;
 
 function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 
