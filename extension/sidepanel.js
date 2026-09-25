@@ -285,5 +285,23 @@ document.querySelectorAll('.capture-speaker').forEach(btn=>btn.addEventListener(
   else st.textContent=res?.error||'Chyba';
   await render();
 }));
-chrome.storage.onChanged.addListener(()=>render());
-render();
+chrome.runtime.onMessage.addListener((msg)=>{
+  if(msg?.type==='SET_SIDEPANEL_TAB' && ['summary','facts','disputed','patterns','actors'].includes(msg.tab)){
+    setTab(msg.tab);
+  }
+});
+
+chrome.storage.onChanged.addListener((changes)=>{
+  if(changes.requestedSideTab?.newValue && ['summary','facts','disputed','patterns','actors'].includes(changes.requestedSideTab.newValue)){
+    setTab(changes.requestedSideTab.newValue);
+  }
+  render();
+});
+
+(async()=>{
+  const {requestedSideTab=null}=await chrome.storage.local.get('requestedSideTab');
+  if(requestedSideTab && ['summary','facts','disputed','patterns','actors'].includes(requestedSideTab)){
+    setTab(requestedSideTab);
+  }
+  await render();
+})();
