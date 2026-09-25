@@ -24,6 +24,12 @@ async function processAudioRequest(payload, tabId) {
       base64Length: payload?.audioBase64?.length || 0
     });
 
+    const { rollingTranscript = '' } = await chrome.storage.local.get('rollingTranscript');
+    const requestPayload = {
+      ...(payload || {}),
+      contextBefore: String(rollingTranscript || '').slice(-2500)
+    };
+
     const res = await fetch(FUNCTION_URL, {
       method: 'POST',
       headers: {
@@ -31,7 +37,7 @@ async function processAudioRequest(payload, tabId) {
         'apikey': PUBLISHABLE_KEY,
         'authorization': 'Bearer ' + PUBLISHABLE_KEY
       },
-      body: JSON.stringify(payload || {}),
+      body: JSON.stringify(requestPayload),
       signal: controller.signal
     });
 
@@ -48,6 +54,11 @@ async function processAudioRequest(payload, tabId) {
 
     if (!res.ok) {
       throw new Error(data?.error || `Backend ${res.status}: ${raw.slice(0, 180)}`);
+    }
+
+    if (data?.transcript) {
+      const combined = (String(rollingTranscript || '') + '\n' + String(data.transcript)).trim();
+      await chrome.storage.local.set({ rollingTranscript: combined.slice(-2500) });
     }
 
     return data;
@@ -81,6 +92,7 @@ async function startCaptureForTab(tab) {
 
   await chrome.storage.local.set({
     sessionClaims: [],
+    rollingTranscript: '',
     processingState: { phase: 'listening', error: null },
     captureState: {
       active: true,
@@ -261,6 +273,26 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           favIconUrl: tab.favIconUrl || ''
         } : null
       });
+    })();
+    return true;
+  }
+
+  if (msg?.type === 'PREPARE_RESTART') {
+    (async () => {
+      const { captureState = {} } = await chrome.storage.local.get('captureState');
+      if (!captureState.tabId) {
+        sendResponse({ ok:false, error:'Otvor video a klikni na ikonu faktySKCZ v lište Chrome.' });
+        return;
+      }
+      try {
+        const tab = await chrome.tabs.get(captureState.tabId);
+        if (!tab?.id) throw new Error('Pôvodná karta už neexistuje.');
+        await chrome.tabs.update(tab.id, { active:true });
+        if (tab.windowId) await chrome.windows.update(tab.windowId, { focused:true });
+        sendResponse({ ok:true, message:'Klikni teraz na ikonu faktySKCZ v lište Chrome. Chrome vyžaduje nový používateľský klik pre opätovné zachytenie audia.' });
+      } catch {
+        sendResponse({ ok:false, error:'Pôvodná video karta už nie je otvorená. Otvor video a klikni na ikonu faktySKCZ.' });
+      }
     })();
     return true;
   }
