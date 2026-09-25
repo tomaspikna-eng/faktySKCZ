@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="sk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>faktySKCZ</title>
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand-row">
+      <div>
+        <div class="brand">fakty<span>SKCZ</span></div>
+        <div class="brand-sub">LIVE FACT CHECK</div>
+      </div>
+      <button id="langBtn" class="lang-btn" type="button">SK</button>
+    </div>
+    <div class="media-row">
+      <span id="mediaDot" class="media-dot"></span>
+      <div id="mediaTitle" class="media-title">Žiadne aktívne video</div>
+    </div>
+    <div class="controls">
+      <button id="startBtn" class="primary" type="button">Spustiť overovanie</button>
+      <button id="stopBtn" class="danger hidden" type="button">Zastaviť</button>
+      <button id="clearBtn" class="ghost" type="button">Vymazať</button>
+    </div>
+    <div id="statusLine" class="status-line">Pripravené.</div>
+    <div id="errorBox" class="error hidden"></div>
+  </header>
+  <nav class="tabs" aria-label="Sekcie">
+    <button class="tab active" data-tab="summary" type="button"><span data-i18n="summary">Prehľad</span></button>
+    <button class="tab" data-tab="facts" type="button"><span data-i18n="facts">Tvrdenia</span> <b id="factsCount">0</b></button>
+    <button class="tab" data-tab="disputed" type="button"><span data-i18n="disputed">Sporné</span> <b id="disputedCount">0</b></button>
+    <button class="tab" data-tab="patterns" type="button"><span data-i18n="patterns">Vzorce</span></button>
+  </nav>
+  <main>
+    <section id="view-summary" class="view active">
+      <div class="summary-grid">
+        <div><strong id="sumAll">0</strong><span data-i18n="captured">Zachytené tvrdenia</span></div>
+        <div><strong id="sumVerified">0</strong><span data-i18n="verified">Overené</span></div>
+        <div><strong id="sumDisputed">0</strong><span data-i18n="disputedShort">Sporné</span></div>
+        <div><strong id="sumUnverified">0</strong><span data-i18n="unverified">Neoverené</span></div>
+      </div>
+      <div class="section-title" data-i18n="latest">Posledné tvrdenia</div>
+      <div id="summaryList" class="claim-list"></div>
+    </section>
+    <section id="view-facts" class="view"><div id="factsList" class="claim-list"></div></section>
+    <section id="view-disputed" class="view">
+      <div class="filter-note" data-i18n="disputedNote">Zavádzajúce, nepravdivé a neoverené tvrdenia.</div>
+      <div id="disputedList" class="claim-list"></div>
+    </section>
+    <section id="view-patterns" class="view">
+      <div class="filter-note" data-i18n="patternsNote">Tu sa zobrazia výroky, ktoré sa počas relácie opakujú.</div>
+      <div id="patternsList" class="claim-list"></div>
+    </section>
+  </main>
+  <footer><span>FactCTP / Supabase EU</span><span>•</span><span data-i18n="noCaptions">bez titulkov</span></footer>
+</div>
+<script src="sidepanel.js"></script>
+</body>
+</html>
