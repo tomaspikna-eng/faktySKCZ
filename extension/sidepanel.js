@@ -4,7 +4,7 @@ let lang = 'sk';
 
 const dict = {
   sk: {
-    summary:'Prehľad', facts:'Tvrdenia', disputed:'Sporné', patterns:'Vzorce', captured:'Zachytené tvrdenia',
+    summary:'Prehľad', facts:'Tvrdenia', disputed:'Sporné', patterns:'Vzorce', actors:'Aktéri', captured:'Zachytené tvrdenia',
     verified:'Overené', disputedShort:'Sporné', unverified:'Neoverené', latest:'Posledné tvrdenia',
     disputedNote:'Zavádzajúce, nepravdivé a neoverené tvrdenia.', patternsNote:'Tu sa zobrazia výroky, ktoré sa počas relácie opakujú.',
     noCaptions:'bez titulkov', start:'Obnoviť overovanie', stop:'Zastaviť', clear:'Vymazať', ready:'Pripravené.',
@@ -15,10 +15,12 @@ const dict = {
     streamTitle:'Stream Browser Source', factOverlay:'LIVE fact-check', scoreOverlay:'Aktéri – priebežné počty verdictov',
     copy:'Kopírovať', copied:'Skopírované', streamNote:'V OBS/Streamlabs vlož URL ako Browser Source. Moderátor sa v prehľade aktérov nezobrazuje.',
     speakerTitle:'Aktéri relácie', speakerNote:'Počas hovorenia konkrétneho človeka zadaj meno a zachyť 3 s jeho hlasu. Max. 4 známi rečníci.',
+    actorsNote:'Percentá zobrazujú iba rozdelenie fact-checkovaných tvrdení v tejto relácii. Nejde o hodnotenie osoby.',
+    checkedClaims:'Fact-checkované tvrdenia', actorWaiting:'Čakám na priradené výroky účastníkov…',
     participant:'Účastník', moderator:'Moderátor', captureVoice:'Zachytiť hlas', capturing:'Nahrávam 3 s…', voiceReady:'Hlas uložený'
   },
   cz: {
-    summary:'Přehled', facts:'Tvrzení', disputed:'Sporné', patterns:'Vzorce', captured:'Zachycená tvrzení',
+    summary:'Přehled', facts:'Tvrzení', disputed:'Sporné', patterns:'Vzorce', actors:'Aktéři', captured:'Zachycená tvrzení',
     verified:'Ověřené', disputedShort:'Sporné', unverified:'Neověřené', latest:'Poslední tvrzení',
     disputedNote:'Zavádějící, nepravdivá a neověřená tvrzení.', patternsNote:'Zde se zobrazí výroky, které se během pořadu opakují.',
     noCaptions:'bez titulků', start:'Obnovit ověřování', stop:'Zastavit', clear:'Vymazat', ready:'Připraveno.',
@@ -29,6 +31,8 @@ const dict = {
     streamTitle:'Stream Browser Source', factOverlay:'LIVE fact-check', scoreOverlay:'Aktéři – průběžné počty verdiktů',
     copy:'Kopírovat', copied:'Zkopírováno', streamNote:'V OBS/Streamlabs vlož URL jako Browser Source. Moderátor se v přehledu aktérů nezobrazuje.',
     speakerTitle:'Aktéři relace', speakerNote:'Během mluvení konkrétního člověka zadej jméno a zachyť 3 s jeho hlasu. Max. 4 známí mluvčí.',
+    actorsNote:'Procenta zobrazují pouze rozdělení fact-checkovaných tvrzení v této relaci. Nejde o hodnocení osoby.',
+    checkedClaims:'Fact-checkovaná tvrzení', actorWaiting:'Čekám na přiřazené výroky účastníků…',
     participant:'Účastník', moderator:'Moderátor', captureVoice:'Zachytit hlas', capturing:'Nahrávám 3 s…', voiceReady:'Hlas uložen'
   }
 };
@@ -82,6 +86,60 @@ function bindSourceButtons(){
     const el=document.getElementById(`src-${b.dataset.source}`); if(el) el.classList.toggle('open');
   });
 }
+
+function pct(n,total){
+  return total>0?Math.round((Number(n||0)/total)*100):0;
+}
+
+function actorCard(p){
+  const c=p?.counts||{};
+  const total=Number(c.total||0);
+  const rows=[
+    ['true',mapVerdict('true'),Number(c.true||0)],
+    ['mostly_true',mapVerdict('mostly_true'),Number(c.mostly_true||0)],
+    ['misleading',mapVerdict('misleading'),Number(c.misleading||0)],
+    ['false',mapVerdict('false'),Number(c.false||0)],
+    ['unverified',mapVerdict('unverified'),Number(c.unverified||0)]
+  ];
+  return `<article class="actor-card">
+    <div class="actor-head">
+      <strong>${esc(p?.displayName||'')}</strong>
+      <span>${esc(t('checkedClaims'))}: <b>${total}</b></span>
+    </div>
+    <div class="actor-bars">
+      ${rows.map(([v,label,n])=>`<div class="actor-row">
+        <div class="actor-label"><span class="verdict ${esc(v)}">${esc(label)}</span><b>${pct(n,total)}%</b><small>${n}/${total}</small></div>
+        <div class="actor-track"><span class="actor-fill ${esc(v)}" style="width:${pct(n,total)}%"></span></div>
+      </div>`).join('')}
+    </div>
+    <div class="actor-note">${esc(t('actorsNote'))}</div>
+  </article>`;
+}
+
+async function loadActorStats(capture){
+  const box=$('actorsList');
+  const url=capture?.streamOverlay?.scoreboardUrl||'';
+  if(!url){
+    box.innerHTML=empty(t('actorWaiting'));
+    return;
+  }
+  try{
+    const u=new URL(url);
+    u.searchParams.set('format','json');
+    u.searchParams.delete('view');
+    const r=await fetch(u.toString(),{cache:'no-store'});
+    const data=await r.json();
+    const people=Array.isArray(data?.participants)?data.participants:[];
+    if(!data?.speakerMappingReady||!people.length){
+      box.innerHTML=empty(t('actorWaiting'));
+      return;
+    }
+    box.innerHTML=people.map(actorCard).join('');
+  }catch{
+    box.innerHTML=empty(t('actorWaiting'));
+  }
+}
+
 
 async function render(){
   const state=await chrome.storage.local.get(['sessionClaims','captureState','processingState','uiLang','speakerProfiles','detectedParticipants']);
@@ -162,6 +220,7 @@ async function render(){
   const patterns=claims.filter(c=>(c.repeats||1)>1);
   $('patternsList').innerHTML=patterns.length?patterns.map(card).join(''):empty(t('noPatterns'));
   bindSourceButtons();
+  await loadActorStats(capture);
 }
 
 function setTab(name){
