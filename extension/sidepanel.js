@@ -9,7 +9,7 @@ const dict = {
     disputedNote:'Zavádzajúce, nepravdivé a neoverené tvrdenia.', patternsNote:'Tu sa zobrazia výroky, ktoré sa počas relácie opakujú.',
     noCaptions:'bez titulkov', start:'Spustiť overovanie', stop:'Zastaviť', clear:'Vymazať', ready:'Pripravené.',
     listening:'Počúvam audio aktuálneho tabu…', transcribing:'Prepisujem a analyzujem posledný úsek…', stopped:'Overovanie je zastavené.',
-    noVideo:'Žiadne aktívne video', emptyTitle:'Zatiaľ bez tvrdení', emptyBody:'Po spustení sa sem budú pridávať overiteľné výroky.',
+    noVideo:'Klikni na ikonu faktySKCZ pri otvorenom videu', emptyTitle:'Zatiaľ bez tvrdení', emptyBody:'Po spustení sa sem budú pridávať overiteľné výroky.',
     noDisputed:'Zatiaľ bez sporných tvrdení', noPatterns:'Zatiaľ bez opakovaných tvrdení', sources:'Zdroje', noSources:'Zdroj nie je v tomto výsledku dostupný.',
     confidence:'istota', repeats:'× opakované', timeFallback:'od spustenia'
   },
@@ -19,7 +19,7 @@ const dict = {
     disputedNote:'Zavádějící, nepravdivá a neověřená tvrzení.', patternsNote:'Zde se zobrazí výroky, které se během pořadu opakují.',
     noCaptions:'bez titulků', start:'Spustit ověřování', stop:'Zastavit', clear:'Vymazat', ready:'Připraveno.',
     listening:'Poslouchám audio aktuálního panelu…', transcribing:'Přepisuji a analyzuji poslední úsek…', stopped:'Ověřování je zastaveno.',
-    noVideo:'Žádné aktivní video', emptyTitle:'Zatím bez tvrzení', emptyBody:'Po spuštění se sem budou přidávat ověřitelná tvrzení.',
+    noVideo:'Klikni na ikonu faktySKCZ při otevřeném videu', emptyTitle:'Zatím bez tvrzení', emptyBody:'Po spuštění se sem budou přidávat ověřitelná tvrzení.',
     noDisputed:'Zatím bez sporných tvrzení', noPatterns:'Zatím bez opakovaných tvrzení', sources:'Zdroje', noSources:'Zdroj není v tomto výsledku dostupný.',
     confidence:'jistota', repeats:'× opakováno', timeFallback:'od spuštění'
   }
