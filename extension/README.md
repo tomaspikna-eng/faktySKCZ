@@ -1,4 +1,4 @@
-# faktySKCZ Chrome Extension v0.6.2
+# DETEKTOR Chrome Extension v0.6.5
 
 MVP prerobené z popup rozhrania na natívny Chrome Side Panel.
 
@@ -34,4 +34,4 @@ MVP prerobené z popup rozhrania na natívny Chrome Side Panel.
 2. Zapni Developer mode.
 3. Klikni Load unpacked.
 4. Vyber tento priečinok.
-5. Klikni na ikonu faktySKCZ a otvorí sa pravý side panel.
+5. Klikni na ikonu DETEKTOR a otvorí sa pravý side panel.
