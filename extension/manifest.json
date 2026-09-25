@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "faktySKCZ — Live Fact Check",
-  "version": "0.5.9",
+  "version": "0.6.0",
   "description": "Live CZ/SK fact-checking z audia aktuálneho tabu v bočnom paneli.",
   "minimum_chrome_version": "116",
   "permissions": [
