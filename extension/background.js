@@ -24,10 +24,14 @@ async function processAudioRequest(payload, tabId) {
       base64Length: payload?.audioBase64?.length || 0
     });
 
-    const { rollingTranscript = '' } = await chrome.storage.local.get('rollingTranscript');
+    const { rollingTranscript = '', captureState = {} } = await chrome.storage.local.get(['rollingTranscript','captureState']);
     const requestPayload = {
       ...(payload || {}),
-      contextBefore: String(rollingTranscript || '').slice(-2500)
+      contextBefore: String(rollingTranscript || '').slice(-2500),
+      sessionId: captureState.sessionId || null,
+      sourceUrl: captureState.url || '',
+      mediaTitle: captureState.title || '',
+      sessionStartedAt: captureState.startedAt || null
     };
 
     const res = await fetch(FUNCTION_URL, {
@@ -89,6 +93,7 @@ async function startCaptureForTab(tab) {
   await ensureOffscreen();
   const streamId = await chrome.tabCapture.getMediaStreamId({ targetTabId: tab.id });
   const startedAt = new Date().toISOString();
+  const sessionId = crypto.randomUUID();
 
   await chrome.storage.local.set({
     sessionClaims: [],
@@ -96,6 +101,7 @@ async function startCaptureForTab(tab) {
     processingState: { phase: 'listening', error: null },
     captureState: {
       active: true,
+      sessionId,
       tabId: tab.id,
       windowId: tab.windowId,
       title: tab.title || 'Aktuálne video',
@@ -319,14 +325,40 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     (async () => {
       try { await chrome.runtime.sendMessage({ target: 'offscreen', type: 'STOP_AUDIO' }); } catch {}
       const { captureState = {} } = await chrome.storage.local.get('captureState');
+
+      let archived = null;
+      if (captureState.sessionId) {
+        try {
+          const res = await fetch(FUNCTION_URL, {
+            method:'POST',
+            headers:{
+              'content-type':'application/json',
+              'apikey':PUBLISHABLE_KEY,
+              'authorization':'Bearer ' + PUBLISHABLE_KEY
+            },
+            body:JSON.stringify({
+              action:'complete_session',
+              sessionId:captureState.sessionId,
+              client:'chrome-extension'
+            })
+          });
+          archived = await res.json().catch(()=>null);
+        } catch {}
+      }
+
       if (captureState.tabId) {
         try { await chrome.action.setBadgeText({ tabId: captureState.tabId, text: '' }); } catch {}
       }
       await chrome.storage.local.set({
-        captureState: { ...captureState, active: false, stoppedAt: new Date().toISOString() },
+        captureState: {
+          ...captureState,
+          active: false,
+          stoppedAt: new Date().toISOString(),
+          archivedAt: archived?.archived ? new Date().toISOString() : captureState.archivedAt || null
+        },
         processingState: { phase: 'stopped', error: null }
       });
-      sendResponse({ ok: true });
+      sendResponse({ ok: true, archived });
     })();
     return true;
   }
