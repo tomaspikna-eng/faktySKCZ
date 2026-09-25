@@ -34,6 +34,7 @@ async function processAudioRequest(payload, tabId) {
       sourceUrl: captureState.url || '',
       mediaTitle: captureState.title || '',
       sessionStartedAt: captureState.startedAt || null,
+      pageContext: captureState.pageContext || {},
       speakerProfiles: Array.isArray(speakerProfiles) ? speakerProfiles.slice(0,4) : []
     };
 
@@ -95,6 +96,28 @@ function isHttpTab(tab) {
   return !!tab?.id && /^https?:/i.test(tab.url || '');
 }
 
+async function getPageContext(tabId) {
+  try {
+    const results = await chrome.scripting.executeScript({
+      target:{tabId},
+      func:()=>{
+        const meta=(sel)=>document.querySelector(sel)?.getAttribute('content')||'';
+        const heading=document.querySelector('h1')?.textContent?.trim()||'';
+        return {
+          title:document.title||'',
+          description:meta('meta[name="description"]'),
+          ogTitle:meta('meta[property="og:title"]'),
+          ogDescription:meta('meta[property="og:description"]'),
+          heading
+        };
+      }
+    });
+    return results?.[0]?.result || {};
+  } catch {
+    return {};
+  }
+}
+
 async function createStreamOverlay({ sessionId, sourceUrl, mediaTitle, startedAt }) {
   const res = await fetch(OVERLAY_API_URL, {
     method:'POST',
@@ -137,6 +160,7 @@ async function startCaptureForTab(tab) {
   const streamId = await chrome.tabCapture.getMediaStreamId({ targetTabId: tab.id });
   const startedAt = new Date().toISOString();
   const sessionId = crypto.randomUUID();
+  const pageContext = await getPageContext(tab.id);
 
   let streamOverlay = null;
   try {
@@ -159,6 +183,7 @@ async function startCaptureForTab(tab) {
     sessionClaims: [],
     rollingTranscript: '',
     speakerProfiles: [],
+    detectedParticipants: [],
     processingState: { phase: 'listening', error: null },
     captureState: {
       active: true,
@@ -169,6 +194,7 @@ async function startCaptureForTab(tab) {
       url: tab.url || '',
       favIconUrl: tab.favIconUrl || '',
       startedAt,
+      pageContext,
       streamOverlay
     }
   });
@@ -535,6 +561,30 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         return;
       }
       await appendClaims(msg.payload, msg.tabId);
+
+      if (Array.isArray(msg.payload?.participants) && msg.payload.participants.length) {
+        const { detectedParticipants = [] } = await chrome.storage.local.get('detectedParticipants');
+        const merged = Array.isArray(detectedParticipants) ? [...detectedParticipants] : [];
+        for (const p of msg.payload.participants) {
+          const name = String(p?.displayName || '').trim();
+          if (!name) continue;
+          const key = name.toLowerCase().replace(/\s+/g,' ').trim() + '|' + (p?.role === 'moderator' ? 'moderator' : 'participant');
+          const idx = merged.findIndex(x => (
+            String(x?.displayName || '').toLowerCase().replace(/\s+/g,' ').trim() + '|' +
+            (x?.role === 'moderator' ? 'moderator' : 'participant')
+          ) === key);
+          const item = {
+            displayName:name,
+            role:p?.role === 'moderator' ? 'moderator' : 'participant',
+            source:p?.source || 'intro',
+            confidence:Number.isFinite(Number(p?.confidence)) ? Number(p.confidence) : null
+          };
+          if (idx >= 0) merged[idx] = {...merged[idx],...item};
+          else merged.push(item);
+        }
+        await chrome.storage.local.set({ detectedParticipants: merged.slice(0,8) });
+      }
+
       await chrome.storage.local.set({
         lastResult: { payload: msg.payload, receivedAt: new Date().toISOString() },
         processingState: { phase: 'listening', error: null }
