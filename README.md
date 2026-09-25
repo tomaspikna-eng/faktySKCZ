@@ -1,4 +1,4 @@
-# faktySKCZ
+# DETEKTOR
 
 Samostatný MVP projekt pre CZ/SK live fact-checking rozšírenie a web.
 
@@ -42,4 +42,4 @@ Priečinok: `/extension`
 
 ## Dôležité
 
-Nevytvárať ďalší Supabase projekt pre faktySKCZ. Existujúci projekt `FactCTP` je backend tohto projektu.
+Nevytvárať ďalší Supabase projekt pre DETEKTOR. Existujúci projekt `FactCTP` je technický backend produktu DETEKTOR.
