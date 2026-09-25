@@ -53,6 +53,7 @@
     <button class="tab" data-tab="facts" type="button"><span data-i18n="facts">Tvrdenia</span> <b id="factsCount">0</b></button>
     <button class="tab" data-tab="disputed" type="button"><span data-i18n="disputed">Sporné</span> <b id="disputedCount">0</b></button>
     <button class="tab" data-tab="patterns" type="button"><span data-i18n="patterns">Vzorce</span></button>
+    <button class="tab" data-tab="actors" type="button"><span data-i18n="actors">Aktéri</span></button>
   </nav>
   <main>
     <section id="view-summary" class="view active">
@@ -73,6 +74,10 @@
     <section id="view-patterns" class="view">
       <div class="filter-note" data-i18n="patternsNote">Tu sa zobrazia výroky, ktoré sa počas relácie opakujú.</div>
       <div id="patternsList" class="claim-list"></div>
+    </section>
+    <section id="view-actors" class="view">
+      <div class="filter-note" data-i18n="actorsNote">Percentá zobrazujú iba rozdelenie fact-checkovaných tvrdení v tejto relácii. Nejde o hodnotenie osoby.</div>
+      <div id="actorsList" class="actors-list"></div>
     </section>
   </main>
   <footer><span>FactCTP / Supabase EU</span><span>•</span><span data-i18n="noCaptions">bez titulkov</span></footer>
