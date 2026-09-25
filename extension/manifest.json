@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "faktySKCZ — Live Fact Check",
-  "version": "0.6.2",
-  "description": "Live CZ/SK fact-checking z audia aktuálneho tabu v bočnom paneli.",
+  "name": "DETEKTOR — Live Fact Check",
+  "version": "0.6.5",
+  "description": "DETEKTOR — Live CZ/SK fact-checking z audia aktuálneho tabu v bočnom paneli.",
   "minimum_chrome_version": "116",
   "permissions": [
     "storage",
@@ -14,7 +14,7 @@
     "tabs"
   ],
   "action": {
-    "default_title": "Otvoriť faktySKCZ"
+    "default_title": "Otvoriť DETEKTOR"
   },
   "side_panel": {
     "default_path": "sidepanel.html"
