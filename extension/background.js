@@ -592,3 +592,32 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     })();
   }
 });
+
+const SIDEPANEL_COMMAND_TABS = {
+  'open-summary':'summary',
+  'open-facts':'facts',
+  'open-disputed':'disputed',
+  'open-patterns':'patterns',
+  'open-actors':'actors'
+};
+
+chrome.commands.onCommand.addListener(async (command) => {
+  const tabName = SIDEPANEL_COMMAND_TABS[command];
+  if (!tabName) return;
+  try {
+    const [tab] = await chrome.tabs.query({ active:true, lastFocusedWindow:true });
+    if (!tab?.windowId) return;
+
+    await chrome.storage.local.set({ requestedSideTab:tabName });
+    await chrome.sidePanel.open({ windowId:tab.windowId });
+
+    try {
+      await chrome.runtime.sendMessage({ type:'SET_SIDEPANEL_TAB', tab:tabName });
+    } catch {}
+  } catch (e) {
+    await appendDebugEvent('sidepanel_command_error', {
+      command,
+      error:e?.message || String(e)
+    });
+  }
+});
