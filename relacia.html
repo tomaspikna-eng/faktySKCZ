@@ -2,12 +2,12 @@
 <html lang="sk">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>PROJECT — Detail relácie</title>
+<title>DETEKTOR — Detail relácie</title>
 <link rel="stylesheet" href="archive.css">
 </head>
 <body>
 <div class="page"><div class="topline"></div>
-<header class="header"><div><a class="brand" href="index.html">PRO<span>JECT</span></a><div class="tagline">Live fact-checking pre Slovensko a Česko</div></div><div class="lang">SK | CZ</div></header>
+<header class="header"><div><a class="brand" href="index.html">DETEK<span>TOR</span></a><div class="tagline">Live fact-checking pre Slovensko a Česko</div></div><div class="lang">SK | CZ</div></header>
 <nav class="menu"><ul><li><a href="index.html#ako">Ako to funguje</a></li><li><a class="active" href="archiv.html">Archív relácií</a></li><li><a href="index.html#metodika">Metodika</a></li><li><a href="index.html#media">Pre médiá</a></li></ul></nav>
 <main class="content">
 <div class="breadcrumb"><a href="archiv.html">Archív relácií</a> › Detail relácie</div>
@@ -54,7 +54,7 @@ async function load(){
  if(!id){st.className='error';st.textContent='Chýba identifikátor relácie.';return}
  try{
   const d=await api({action:'detail',sessionId:id}),s=d.session||{},claims=d.claims||[],parts=d.participants||[],topics=d.topics||[],sources=d.sources||[],rels=d.relations||[];
-  document.title=(s.mediaTitle||'Relácia')+' — PROJECT';document.getElementById('title').textContent=s.mediaTitle||'Bez názvu';
+  document.title=(s.mediaTitle||'Relácia')+' — DETEKTOR';document.getElementById('title').textContent=s.mediaTitle||'Bez názvu';
   document.getElementById('meta').innerHTML=`<span>${date(s.startedAt)}</span><span>${clock(s.durationSeconds)}</span><span>${esc(s.countryCode||'')}</span><span>${esc(s.mediaName||s.sourcePlatform||'')}</span>`;
   const sl=document.getElementById('sourceLink');sl.href=s.sourceUrl||'#';if(!s.sourceUrl)sl.style.display='none';
   const verified=claims.filter(x=>x.verdict&&x.verdict!=='unverified').length,unverified=claims.length-verified;
