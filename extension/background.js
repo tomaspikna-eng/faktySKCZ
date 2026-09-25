@@ -1,12 +1,79 @@
 const OFFSCREEN_URL = 'offscreen.html';
 
-chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
-chrome.runtime.onInstalled.addListener(() => {
-  chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
+function isHttpTab(tab) {
+  return !!tab?.id && /^https?:/i.test(tab.url || '');
+}
+
+async function startCaptureForTab(tab) {
+  if (!isHttpTab(tab)) throw new Error('Otvor video alebo stream v bežnom HTTP/HTTPS tabe.');
+
+  const captured = await chrome.tabCapture.getCapturedTabs();
+  const activeCapture = captured.find(x => x.status === 'active' || x.status === 'pending');
+  if (activeCapture && activeCapture.tabId !== tab.id) {
+    try { await chrome.runtime.sendMessage({ target:'offscreen', type:'STOP_AUDIO' }); } catch {}
+  }
+
+  await ensureOffscreen();
+  const streamId = await chrome.tabCapture.getMediaStreamId({ targetTabId: tab.id });
+  const startedAt = new Date().toISOString();
+
+  await chrome.storage.local.set({
+    sessionClaims: [],
+    processingState: { phase: 'listening', error: null },
+    captureState: {
+      active: true,
+      tabId: tab.id,
+      windowId: tab.windowId,
+      title: tab.title || 'Aktuálne video',
+      url: tab.url || '',
+      favIconUrl: tab.favIconUrl || '',
+      startedAt
+    }
+  });
+
+  const reply = await chrome.runtime.sendMessage({
+    target:'offscreen',
+    type:'START_AUDIO',
+    streamId,
+    tabId:tab.id
+  });
+  if (reply?.ok === false) throw new Error(reply.error || 'Audio vstup sa nepodarilo spustiť.');
+
+  await chrome.action.setBadgeText({tabId:tab.id,text:'LIVE'});
+}
+
+chrome.action.onClicked.addListener(async (tab) => {
+  try {
+    await chrome.sidePanel.open({ windowId: tab.windowId });
+    await startCaptureForTab(tab);
+  } catch (e) {
+    await chrome.storage.local.set({
+      processingState:{phase:'error',error:e?.message||String(e)},
+      captureState:{
+        active:false,
+        tabId:tab?.id||null,
+        windowId:tab?.windowId||null,
+        title:tab?.title||'',
+        url:tab?.url||''
+      }
+    });
+  }
 });
-chrome.runtime.onStartup.addListener(() => {
-  chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
-});
+
+async function getCurrentContext() {
+  try {
+    const [tab] = await chrome.tabs.query({active:true,lastFocusedWindow:true});
+    if (isHttpTab(tab)) return tab;
+  } catch {}
+  const {captureState={}}=await chrome.storage.local.get('captureState');
+  if (captureState.tabId) {
+    try {
+      const tab=await chrome.tabs.get(captureState.tabId);
+      if (isHttpTab(tab)) return tab;
+    } catch {}
+  }
+  return null;
+}
 
 async function ensureOffscreen() {
   const contexts = await chrome.runtime.getContexts({
@@ -107,48 +174,36 @@ async function appendClaims(payload, tabId) {
 }
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg?.type === 'GET_ACTIVE_CONTEXT') {
+    (async () => {
+      const tab = await getCurrentContext();
+      sendResponse({
+        ok: !!tab,
+        tab: tab ? {
+          id: tab.id,
+          windowId: tab.windowId,
+          title: tab.title || 'Aktuálne video',
+          url: tab.url || '',
+          favIconUrl: tab.favIconUrl || ''
+        } : null
+      });
+    })();
+    return true;
+  }
+
   if (msg?.type === 'START_CAPTURE') {
     (async () => {
       try {
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        if (!tab?.id) throw new Error('Aktívny tab sa nenašiel.');
-        if (!/^https?:/.test(tab.url || '')) throw new Error('Otvor video alebo stream v bežnom HTTP/HTTPS tabe.');
-
-        await ensureOffscreen();
-        const streamId = await chrome.tabCapture.getMediaStreamId({ targetTabId: tab.id });
-        const startedAt = new Date().toISOString();
-
-        await chrome.storage.local.set({
-          sessionClaims: [],
-          processingState: { phase: 'listening', error: null },
-          captureState: {
-            active: true,
-            tabId: tab.id,
-            windowId: tab.windowId,
-            title: tab.title || 'Aktuálne video',
-            url: tab.url || '',
-            favIconUrl: tab.favIconUrl || '',
-            startedAt
-          }
-        });
-
-        const offscreenReply = await chrome.runtime.sendMessage({
-          target: 'offscreen',
-          type: 'START_AUDIO',
-          streamId,
-          tabId: tab.id
-        });
-        if (offscreenReply && offscreenReply.ok === false) {
-          throw new Error(offscreenReply.error || 'Audio vstup sa nepodarilo spustiť.');
-        }
-
-        await chrome.action.setBadgeText({ tabId: tab.id, text: 'LIVE' });
+        const tab = await getCurrentContext();
+        if (!tab) throw new Error('Klikni na ikonu faktySKCZ v lište Chrome. Otvorí panel a spustí overovanie aktuálneho tabu.');
+        await startCaptureForTab(tab);
         sendResponse({ ok: true });
       } catch (e) {
+        const error = e?.message || String(e);
         await chrome.storage.local.set({
-          processingState: { phase: 'error', error: e?.message || String(e) }
+          processingState: { phase: 'error', error }
         });
-        sendResponse({ ok: false, error: e?.message || String(e) });
+        sendResponse({ ok: false, error });
       }
     })();
     return true;
