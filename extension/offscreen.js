@@ -3,8 +3,6 @@ let audioContext = null;
 let stopRequested = false;
 let currentRecorder = null;
 let tabId = null;
-const FUNCTION_URL = 'https://mexrrchqiehzvrefftym.supabase.co/functions/v1/process-audio';
-const PUBLISHABLE_KEY = 'sb_publishable_NZCEN4vfkbyxQrzCa8YR8Q_i4ZQCH2T';
 const SLICE_MS = 7000;
 
 function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
@@ -54,24 +52,23 @@ async function processLoop() {
         payload:{status:'transcribing'}
       });
 
-      const res = await fetch(FUNCTION_URL,{
-        method:'POST',
-        headers:{
-          'content-type':'application/json',
-          'apikey': PUBLISHABLE_KEY
-        },
-        body:JSON.stringify({
+      const reply = await chrome.runtime.sendMessage({
+        target:'background',
+        type:'PROCESS_AUDIO',
+        tabId,
+        payload:{
           audioBase64,
           mimeType:blob.type || 'audio/webm',
           language:'auto',
           client:'chrome-extension'
-        })
+        }
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || `Backend ${res.status}`);
+      if (!reply?.ok) {
+        throw new Error(reply?.error || 'Backend request zlyhal');
+      }
 
-      chrome.runtime.sendMessage({type:'FC_RESULT',tabId,payload:data});
+      chrome.runtime.sendMessage({type:'FC_RESULT',tabId,payload:reply.data});
     } catch (e) {
       chrome.runtime.sendMessage({
         type:'FC_RESULT',tabId,
