@@ -57,7 +57,10 @@ async function processAudioRequest(payload, tabId) {
     });
 
     if (!res.ok) {
-      throw new Error(data?.error || `Backend ${res.status}: ${raw.slice(0, 180)}`);
+      const err = new Error(data?.userMessage || data?.error || `Backend ${res.status}: ${raw.slice(0, 180)}`);
+      err.errorCode = data?.errorCode || null;
+      err.fatal = data?.fatal === true;
+      throw err;
     }
 
     if (data?.transcript) {
@@ -70,8 +73,16 @@ async function processAudioRequest(payload, tabId) {
     const message = e?.name === 'AbortError'
       ? 'Backend timeout po 45 sekundách'
       : (e?.message || String(e));
-    await appendDebugEvent('backend_fetch_error', { tabId, error: message });
-    throw new Error(`Backend fetch: ${message}`);
+    await appendDebugEvent('backend_fetch_error', {
+      tabId,
+      error: message,
+      errorCode: e?.errorCode || null,
+      fatal: e?.fatal === true
+    });
+    const wrapped = new Error(message);
+    wrapped.errorCode = e?.errorCode || null;
+    wrapped.fatal = e?.fatal === true;
+    throw wrapped;
   } finally {
     clearTimeout(timeout);
   }
@@ -260,7 +271,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         const data = await processAudioRequest(msg.payload, msg.tabId);
         sendResponse({ ok: true, data });
       } catch (e) {
-        sendResponse({ ok: false, error: e?.message || String(e) });
+        sendResponse({
+          ok: false,
+          error: e?.message || String(e),
+          errorCode: e?.errorCode || null,
+          fatal: e?.fatal === true
+        });
       }
     })();
     return true;
@@ -376,9 +392,45 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg?.type === 'FC_RESULT' && msg.tabId) {
     (async () => {
       if (msg.payload?.error) {
+        const { captureState = {} } = await chrome.storage.local.get('captureState');
+
+        if (msg.payload?.fatal === true) {
+          if (captureState.sessionId) {
+            try {
+              await fetch(FUNCTION_URL, {
+                method:'POST',
+                headers:{
+                  'content-type':'application/json',
+                  'apikey':PUBLISHABLE_KEY,
+                  'authorization':'Bearer ' + PUBLISHABLE_KEY
+                },
+                body:JSON.stringify({
+                  action:'complete_session',
+                  sessionId:captureState.sessionId,
+                  client:'chrome-extension'
+                })
+              });
+            } catch {}
+          }
+          if (captureState.tabId) {
+            try { await chrome.action.setBadgeText({ tabId:captureState.tabId, text:'' }); } catch {}
+          }
+        }
+
         await chrome.storage.local.set({
           lastResult: { payload: msg.payload, receivedAt: new Date().toISOString() },
-          processingState: { phase: 'error', error: msg.payload.error }
+          captureState: msg.payload?.fatal === true ? {
+            ...captureState,
+            active:false,
+            stoppedAt:new Date().toISOString(),
+            stopReason:msg.payload?.errorCode || 'fatal_error'
+          } : captureState,
+          processingState: {
+            phase: 'error',
+            error: msg.payload.error,
+            errorCode: msg.payload?.errorCode || null,
+            fatal: msg.payload?.fatal === true
+          }
         });
         return;
       }
