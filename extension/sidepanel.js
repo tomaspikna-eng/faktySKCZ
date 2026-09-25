@@ -121,8 +121,8 @@ async function render(){
     }else if(st.dataset.busy!=='1'){
       st.textContent='';
     }
-    btn.textContent=t('captureVoice');
-    btn.disabled=capture.active!==true;
+    btn.textContent=st.dataset.busy==='1'?t('capturing'):t('captureVoice');
+    btn.disabled=st.dataset.busy==='1'||capture.active!==true;
     role.options[0].textContent=t('participant');
     role.options[1].textContent=t('moderator');
   });
