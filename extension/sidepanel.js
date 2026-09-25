@@ -13,7 +13,9 @@ const dict = {
     noDisputed:'Zatiaľ bez sporných tvrdení', noPatterns:'Zatiaľ bez opakovaných tvrdení', sources:'Zdroje', noSources:'Zdroj nie je v tomto výsledku dostupný.',
     confidence:'istota', repeats:'× opakované', timeFallback:'od spustenia',
     streamTitle:'Stream Browser Source', factOverlay:'LIVE fact-check', scoreOverlay:'Aktéri – priebežné počty verdictov',
-    copy:'Kopírovať', copied:'Skopírované', streamNote:'V OBS/Streamlabs vlož URL ako Browser Source. Moderátor sa v prehľade aktérov nezobrazuje.'
+    copy:'Kopírovať', copied:'Skopírované', streamNote:'V OBS/Streamlabs vlož URL ako Browser Source. Moderátor sa v prehľade aktérov nezobrazuje.',
+    speakerTitle:'Aktéri relácie', speakerNote:'Počas hovorenia konkrétneho človeka zadaj meno a zachyť 3 s jeho hlasu. Max. 4 známi rečníci.',
+    participant:'Účastník', moderator:'Moderátor', captureVoice:'Zachytiť hlas', capturing:'Nahrávam 3 s…', voiceReady:'Hlas uložený'
   },
   cz: {
     summary:'Přehled', facts:'Tvrzení', disputed:'Sporné', patterns:'Vzorce', captured:'Zachycená tvrzení',
@@ -25,7 +27,9 @@ const dict = {
     noDisputed:'Zatím bez sporných tvrzení', noPatterns:'Zatím bez opakovaných tvrzení', sources:'Zdroje', noSources:'Zdroj není v tomto výsledku dostupný.',
     confidence:'jistota', repeats:'× opakováno', timeFallback:'od spuštění',
     streamTitle:'Stream Browser Source', factOverlay:'LIVE fact-check', scoreOverlay:'Aktéři – průběžné počty verdiktů',
-    copy:'Kopírovat', copied:'Zkopírováno', streamNote:'V OBS/Streamlabs vlož URL jako Browser Source. Moderátor se v přehledu aktérů nezobrazuje.'
+    copy:'Kopírovat', copied:'Zkopírováno', streamNote:'V OBS/Streamlabs vlož URL jako Browser Source. Moderátor se v přehledu aktérů nezobrazuje.',
+    speakerTitle:'Aktéři relace', speakerNote:'Během mluvení konkrétního člověka zadej jméno a zachyť 3 s jeho hlasu. Max. 4 známí mluvčí.',
+    participant:'Účastník', moderator:'Moderátor', captureVoice:'Zachytit hlas', capturing:'Nahrávám 3 s…', voiceReady:'Hlas uložen'
   }
 };
 const t = k => dict[lang][k] || k;
@@ -80,7 +84,7 @@ function bindSourceButtons(){
 }
 
 async function render(){
-  const state=await chrome.storage.local.get(['sessionClaims','captureState','processingState','uiLang']);
+  const state=await chrome.storage.local.get(['sessionClaims','captureState','processingState','uiLang','speakerProfiles']);
   const claims=Array.isArray(state.sessionClaims)?state.sessionClaims:[];
   const capture=state.captureState||{};
   const proc=state.processingState||{};
@@ -101,6 +105,27 @@ async function render(){
     $('factOverlayUrl').value='';
     $('scoreOverlayUrl').value='';
   }
+
+  const profiles=Array.isArray(state.speakerProfiles)?state.speakerProfiles:[];
+  document.querySelectorAll('.speaker-row').forEach(row=>{
+    const key=row.dataset.speakerKey;
+    const p=profiles.find(x=>x?.speakerKey===key);
+    const name=row.querySelector('.speaker-name');
+    const role=row.querySelector('.speaker-role');
+    const btn=row.querySelector('.capture-speaker');
+    const st=row.querySelector('.speaker-state');
+    if(p){
+      if(document.activeElement!==name)name.value=p.displayName||'';
+      role.value=p.role==='moderator'?'moderator':'participant';
+      st.textContent=t('voiceReady');
+    }else if(st.dataset.busy!=='1'){
+      st.textContent='';
+    }
+    btn.textContent=t('captureVoice');
+    btn.disabled=capture.active!==true;
+    role.options[0].textContent=t('participant');
+    role.options[1].textContent=t('moderator');
+  });
 
   $('mediaTitle').textContent=capture.title||t('noVideo');
   $('mediaDot').classList.toggle('live',capture.active===true);
@@ -159,5 +184,30 @@ async function copyOverlay(inputId,buttonId){
 }
 $('copyFactOverlay').addEventListener('click',()=>copyOverlay('factOverlayUrl','copyFactOverlay'));
 $('copyScoreOverlay').addEventListener('click',()=>copyOverlay('scoreOverlayUrl','copyScoreOverlay'));
+
+document.querySelectorAll('.capture-speaker').forEach(btn=>btn.addEventListener('click',async()=>{
+  const row=btn.closest('.speaker-row');
+  const speakerKey=row?.dataset?.speakerKey||'';
+  const name=row?.querySelector('.speaker-name')?.value?.trim()||'';
+  const role=row?.querySelector('.speaker-role')?.value==='moderator'?'moderator':'participant';
+  const st=row?.querySelector('.speaker-state');
+  if(!name){
+    st.textContent=lang==='cz'?'Zadej jméno.':'Zadaj meno.';
+    return;
+  }
+  btn.disabled=true;
+  st.dataset.busy='1';
+  st.textContent=t('capturing');
+  const res=await chrome.runtime.sendMessage({
+    type:'CAPTURE_SPEAKER_REFERENCE',
+    speakerKey,
+    displayName:name,
+    role
+  });
+  st.dataset.busy='0';
+  if(res?.ok)st.textContent=t('voiceReady');
+  else st.textContent=res?.error||'Chyba';
+  await render();
+}));
 chrome.storage.onChanged.addListener(()=>render());
 render();
