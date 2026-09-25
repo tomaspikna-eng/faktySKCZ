@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "faktySKCZ — Live Fact Check",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "Live CZ/SK fact-checking z audia aktuálneho tabu v bočnom paneli.",
   "minimum_chrome_version": "116",
   "permissions": [
@@ -25,5 +25,22 @@
   },
   "host_permissions": [
     "https://mexrrchqiehzvrefftym.supabase.co/*"
-  ]
+  ],
+  "commands": {
+    "open-summary": {
+      "description": "Otvoriť sidebar – Prehľad"
+    },
+    "open-facts": {
+      "description": "Otvoriť sidebar – Tvrdenia"
+    },
+    "open-disputed": {
+      "description": "Otvoriť sidebar – Sporné"
+    },
+    "open-patterns": {
+      "description": "Otvoriť sidebar – Vzorce"
+    },
+    "open-actors": {
+      "description": "Otvoriť sidebar – Aktéri"
+    }
+  }
 }
