@@ -1,4 +1,4 @@
-# DETEKTOR Streamer Pack v0.6.2
+# DETEKTOR Streamer Pack v0.6.5
 
 Tento balík je určený pre streamerov, komentátorov a redakcie, ktoré chcú počas živého vysielania zobrazovať LIVE fact-check a priebežný prehľad fact-checkovaných tvrdení jednotlivých účastníkov.
 
@@ -9,7 +9,7 @@ Tento balík je určený pre streamerov, komentátorov a redakcie, ktoré chcú 
 3. Zapni **Developer mode / Režim pre vývojárov**.
 4. Klikni **Load unpacked / Načítať rozbalené**.
 5. Vyber priečinok, v ktorom je súbor `manifest.json`.
-6. Pripni rozšírenie faktySKCZ / DETEKTOR do lišty prehliadača.
+6. Pripni rozšírenie DETEKTOR do lišty prehliadača.
 7. Otvor video alebo živý stream a klikni na ikonu rozšírenia. Otvorí sa pravý side panel a spustí sa zachytávanie audia.
 
 ## 2. Side panel
