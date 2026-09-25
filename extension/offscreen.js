@@ -3,10 +3,13 @@ let audioContext = null;
 let stopRequested = false;
 let currentRecorder = null;
 let tabId = null;
+let sessionId = null;
 let sequenceNo = 0;
+let queue = [];
+let uploadBusy = false;
+let loopToken = 0;
+const referenceRecorders = new Set();
 const SLICE_MS = 40000;
-
-function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 
 async function blobToBase64(blob) {
   const buf = await blob.arrayBuffer();
@@ -19,90 +22,141 @@ async function blobToBase64(blob) {
   return btoa(binary);
 }
 
-async function recordStandaloneSlice() {
+function recorderMime(){
+  return MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+    ? 'audio/webm;codecs=opus' : 'audio/webm';
+}
+
+async function recordStandaloneSlice(durationMs=SLICE_MS) {
   if (!media || stopRequested) return null;
   return new Promise((resolve, reject) => {
     const chunks = [];
-    const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-      ? 'audio/webm;codecs=opus' : 'audio/webm';
+    const mime = recorderMime();
     const r = new MediaRecorder(media, {mimeType:mime, audioBitsPerSecond:64000});
     currentRecorder = r;
     r.ondataavailable = e => { if (e.data?.size) chunks.push(e.data); };
     r.onerror = e => reject(e.error || new Error('MediaRecorder error'));
     r.onstop = () => {
-      currentRecorder = null;
+      if (currentRecorder === r) currentRecorder = null;
       resolve(chunks.length ? new Blob(chunks,{type:mime}) : null);
     };
     r.start();
     setTimeout(() => {
       if (r.state !== 'inactive') r.stop();
-    }, SLICE_MS);
+    }, durationMs);
   });
 }
 
-async function processLoop() {
-  while (!stopRequested && media) {
-    let blob = null;
-    try {
-      blob = await recordStandaloneSlice();
-      if (!blob || stopRequested) continue;
-      const audioBase64 = await blobToBase64(blob);
+async function captureReference(durationMs=3000) {
+  if (!media || stopRequested) throw new Error('Audio capture nie je aktívny.');
+  const duration = Math.max(2000, Math.min(10000, Number(durationMs)||3000));
+  return new Promise((resolve,reject)=>{
+    const chunks=[];
+    const mime=recorderMime();
+    const r=new MediaRecorder(media,{mimeType:mime,audioBitsPerSecond:64000});
+    referenceRecorders.add(r);
+    r.ondataavailable=e=>{if(e.data?.size)chunks.push(e.data)};
+    r.onerror=e=>{referenceRecorders.delete(r);reject(e.error||new Error('Reference recorder error'))};
+    r.onstop=async()=>{
+      referenceRecorders.delete(r);
+      try{
+        const blob=chunks.length?new Blob(chunks,{type:mime}):null;
+        if(!blob)return reject(new Error('Hlasová ukážka je prázdna.'));
+        resolve({audioBase64:await blobToBase64(blob),mimeType:mime});
+      }catch(e){reject(e)}
+    };
+    r.start();
+    setTimeout(()=>{if(r.state!=='inactive')r.stop()},duration);
+  });
+}
 
-      chrome.runtime.sendMessage({
-        type:'FC_TRANSCRIPT', tabId,
-        payload:{status:'transcribing'}
-      });
+async function uploadQueue(myToken) {
+  if (uploadBusy) return;
+  uploadBusy = true;
+  try {
+    while (!stopRequested && myToken === loopToken && queue.length) {
+      const item = queue.shift();
+      if (!item?.blob) continue;
+      try {
+        const audioBase64 = await blobToBase64(item.blob);
+        chrome.runtime.sendMessage({
+          type:'FC_TRANSCRIPT', tabId,
+          payload:{status:'transcribing'}
+        });
 
-      const currentSequence = sequenceNo++;
-      const reply = await chrome.runtime.sendMessage({
-        target:'background',
-        type:'PROCESS_AUDIO',
-        tabId,
-        payload:{
-          audioBase64,
-          mimeType:blob.type || 'audio/webm',
-          language:'auto',
-          client:'chrome-extension',
-          sequenceNo:currentSequence,
-          audioDurationMs:SLICE_MS
+        const reply = await chrome.runtime.sendMessage({
+          target:'background',
+          type:'PROCESS_AUDIO',
+          tabId,
+          payload:{
+            audioBase64,
+            mimeType:item.blob.type || 'audio/webm',
+            language:'auto',
+            client:'chrome-extension',
+            sequenceNo:item.sequenceNo,
+            audioDurationMs:SLICE_MS,
+            sessionId:item.sessionId
+          }
+        });
+
+        if (!reply?.ok) {
+          if (reply?.fatal === true) {
+            chrome.runtime.sendMessage({
+              type:'FC_RESULT',
+              tabId,
+              payload:{
+                error:reply?.error || 'Spracovanie bolo zastavené.',
+                errorCode:reply?.errorCode || 'fatal_error',
+                fatal:true,
+                transcript:'',
+                claims:[]
+              }
+            });
+            await stop();
+            break;
+          }
+          throw new Error(reply?.error || 'Backend request zlyhal');
         }
-      });
 
-      if (!reply?.ok) {
-        if (reply?.fatal === true) {
-          chrome.runtime.sendMessage({
-            type:'FC_RESULT',
-            tabId,
-            payload:{
-              error:reply?.error || 'Spracovanie bolo zastavené.',
-              errorCode:reply?.errorCode || 'fatal_error',
-              fatal:true,
-              transcript:'',
-              claims:[]
-            }
-          });
-          await stop();
-          return;
-        }
-        throw new Error(reply?.error || 'Backend request zlyhal');
+        chrome.runtime.sendMessage({type:'FC_RESULT',tabId,payload:reply.data});
+      } catch (e) {
+        chrome.runtime.sendMessage({
+          type:'FC_RESULT',tabId,
+          payload:{error:e?.message || String(e),transcript:'',claims:[]}
+        });
       }
+    }
+  } finally {
+    uploadBusy = false;
+    if (!stopRequested && myToken === loopToken && queue.length) uploadQueue(myToken);
+  }
+}
 
-      chrome.runtime.sendMessage({type:'FC_RESULT',tabId,payload:reply.data});
+async function captureLoop(myToken) {
+  while (!stopRequested && media && myToken === loopToken) {
+    try {
+      const blob = await recordStandaloneSlice(SLICE_MS);
+      if (!blob || stopRequested || myToken !== loopToken) continue;
+      queue.push({blob,sequenceNo:sequenceNo++,sessionId});
+      uploadQueue(myToken);
     } catch (e) {
       chrome.runtime.sendMessage({
         type:'FC_RESULT',tabId,
         payload:{error:e?.message || String(e),transcript:'',claims:[]}
       });
-      await sleep(1500);
     }
   }
 }
 
-async function start({streamId,tabId:tid}) {
+async function start({streamId,tabId:tid,sessionId:sid}) {
   await stop();
   stopRequested = false;
   tabId = tid;
+  sessionId = sid || null;
   sequenceNo = 0;
+  queue = [];
+  uploadBusy = false;
+  const myToken = ++loopToken;
 
   media = await navigator.mediaDevices.getUserMedia({
     audio:{
@@ -118,14 +172,20 @@ async function start({streamId,tabId:tid}) {
   const source = audioContext.createMediaStreamSource(media);
   source.connect(audioContext.destination);
 
-  processLoop();
+  captureLoop(myToken);
 }
 
 async function stop() {
   stopRequested = true;
+  loopToken++;
+  queue = [];
   if (currentRecorder && currentRecorder.state !== 'inactive') {
     try { currentRecorder.stop(); } catch {}
   }
+  for (const r of [...referenceRecorders]) {
+    try { if (r.state !== 'inactive') r.stop(); } catch {}
+  }
+  referenceRecorders.clear();
   if (media) {
     media.getTracks().forEach(t=>t.stop());
     media = null;
@@ -145,6 +205,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
   if (msg.type === 'STOP_AUDIO') {
     stop().then(()=>sendResponse({ok:true}));
+    return true;
+  }
+  if (msg.type === 'CAPTURE_REFERENCE') {
+    captureReference(msg.durationMs)
+      .then(x=>sendResponse({ok:true,...x}))
+      .catch(e=>sendResponse({ok:false,error:e?.message || String(e)}));
     return true;
   }
 });
