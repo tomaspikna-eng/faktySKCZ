@@ -74,7 +74,7 @@ async function processAudioRequest(payload, tabId) {
     return data;
   } catch (e) {
     const message = e?.name === 'AbortError'
-      ? 'Backend timeout po 45 sekundách'
+      ? 'Backend timeout po 120 sekundách'
       : (e?.message || String(e));
     await appendDebugEvent('backend_fetch_error', {
       tabId,
