@@ -6,7 +6,10 @@ Samostatný MVP projekt pre CZ/SK live fact-checking rozšírenie a web.
 
 - frontend: schválený old-school informačný layout v0.3
 - browser extension: live audio fact-checking MVP
-- backend: bude vedený v samostatnom Supabase projekte `faktySKCZ`
+- backend: existujúci Supabase projekt `FactCTP`
+- Supabase project ref: `mexrrchqiehzvrefftym`
+- Edge Function: `process-audio`
+- audit tabuľka: `public.factcheck_audits`
 - finálny produktový názov značky ešte nie je vybraný
 
 ## MVP smer
@@ -17,6 +20,13 @@ Samostatný MVP projekt pre CZ/SK live fact-checking rozšírenie a web.
 - jednorazová aktivácia + kredit podľa spotreby
 - TV / newsroom vrstva neskôr
 
+## Architektúra
+
+- GitHub: `tomaspikna-eng/faktySKCZ`
+- Supabase: `FactCTP`
+- frontend web a browser extension budú používať rovnaký backend
+- CSP zostáva úplne oddelený projekt
+
 ## Dôležité
 
-Tento repozitár je oddelený od Connect Sports Pro (CSP).
+Nevytvárať ďalší Supabase projekt pre faktySKCZ. Existujúci projekt `FactCTP` je backend tohto projektu.
