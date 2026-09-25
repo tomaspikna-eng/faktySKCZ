@@ -20,7 +20,7 @@ Sidebar obsahuje päť pohľadov:
 - **Tvrdenia** – všetky fact-checkované tvrdenia.
 - **Sporné** – zavádzajúce, nepravdivé a neoverené tvrdenia.
 - **Vzorce** – opakované tvrdenia v aktuálnej relácii.
-- **Aktéri** – priebežné počty jednotlivých verdictov pre fact-checkované tvrdenia účastníkov. Moderátor sa nezobrazuje. Nejde o celkové hodnotenie osoby.
+- **Aktéri** – percentuálne rozdelenie jednotlivých verdictov a zároveň počet fact-checkovaných tvrdení účastníkov. Moderátor sa nezobrazuje. Nejde o celkové hodnotenie osoby.
 
 ## 3. Automatické rozpoznanie účastníkov
 
