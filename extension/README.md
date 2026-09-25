@@ -1,4 +1,4 @@
-# faktySKCZ Chrome Extension v0.5.9
+# faktySKCZ Chrome Extension v0.6.0
 
 MVP prerobené z popup rozhrania na natívny Chrome Side Panel.
 
@@ -11,6 +11,9 @@ MVP prerobené z popup rozhrania na natívny Chrome Side Panel.
 - samostatný aktérsky overlay s priebežnými počtami verdictov; moderátor je vylúčený
 - live speaker diarization cez gpt-4o-transcribe-diarize po zachytení 3 s hlasovej referencie
 - max. 4 známi rečníci na session; meno a rola sa mapujú na fact-checkované tvrdenia
+- automatická detekcia mien hostí/moderátora z title/description/OG metadata stránky
+- automatická detekcia predstavenia hostí z úvodu relácie bez extra AI requestu
+- detegované mená sa predvyplnia do slotov rečníkov; používateľ už nemusí mená vypisovať ručne
 - audio capture pokračuje počas backend spracovania, takže 40 s batching nevytvára medzery
 - backend: Supabase FactCTP / Edge Function `process-audio`
 - side panel otvorený kliknutím na ikonu rozšírenia
