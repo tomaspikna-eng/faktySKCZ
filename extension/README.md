@@ -22,6 +22,7 @@ MVP prerobené z popup rozhrania na natívny Chrome Side Panel.
 - čas vo videu, ak je na stránke HTML5 video
 - zdroje/detail, pokiaľ ich backend vráti
 - taby Prehľad / Tvrdenia / Sporné / Vzorce / Aktéri
+- Aktéri = priebežné počty konkrétnych verdictov pre fact-checkované tvrdenia jednotlivých účastníkov; moderátor je vynechaný / Aktéri
 - Aktéri = percentuálne rozdelenie verdictov z fact-checkovaných tvrdení každého účastníka; bez jedného celkového skóre osoby
 - Vzorce = iba opakované tvrdenia v rámci aktuálnej session
 - SK/CZ prepínač UI
