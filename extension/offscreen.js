@@ -3,6 +3,7 @@ let audioContext = null;
 let stopRequested = false;
 let currentRecorder = null;
 let tabId = null;
+let sequenceNo = 0;
 const SLICE_MS = 7000;
 
 function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
@@ -52,6 +53,7 @@ async function processLoop() {
         payload:{status:'transcribing'}
       });
 
+      const currentSequence = sequenceNo++;
       const reply = await chrome.runtime.sendMessage({
         target:'background',
         type:'PROCESS_AUDIO',
@@ -60,7 +62,9 @@ async function processLoop() {
           audioBase64,
           mimeType:blob.type || 'audio/webm',
           language:'auto',
-          client:'chrome-extension'
+          client:'chrome-extension',
+          sequenceNo:currentSequence,
+          audioDurationMs:SLICE_MS
         }
       });
 
@@ -83,6 +87,7 @@ async function start({streamId,tabId:tid}) {
   await stop();
   stopRequested = false;
   tabId = tid;
+  sequenceNo = 0;
 
   media = await navigator.mediaDevices.getUserMedia({
     audio:{
