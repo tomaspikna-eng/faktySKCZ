@@ -381,7 +381,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     (async () => {
       const { captureState = {} } = await chrome.storage.local.get('captureState');
       if (!captureState.tabId) {
-        sendResponse({ ok:false, error:'Otvor video a klikni na ikonu faktySKCZ v lište Chrome.' });
+        sendResponse({ ok:false, error:'Otvor video a klikni na ikonu DETEKTOR v lište Chrome.' });
         return;
       }
       try {
@@ -389,9 +389,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         if (!tab?.id) throw new Error('Pôvodná karta už neexistuje.');
         await chrome.tabs.update(tab.id, { active:true });
         if (tab.windowId) await chrome.windows.update(tab.windowId, { focused:true });
-        sendResponse({ ok:true, message:'Klikni teraz na ikonu faktySKCZ v lište Chrome. Chrome vyžaduje nový používateľský klik pre opätovné zachytenie audia.' });
+        sendResponse({ ok:true, message:'Klikni teraz na ikonu DETEKTOR v lište Chrome. Chrome vyžaduje nový používateľský klik pre opätovné zachytenie audia.' });
       } catch {
-        sendResponse({ ok:false, error:'Pôvodná video karta už nie je otvorená. Otvor video a klikni na ikonu faktySKCZ.' });
+        sendResponse({ ok:false, error:'Pôvodná video karta už nie je otvorená. Otvor video a klikni na ikonu DETEKTOR.' });
       }
     })();
     return true;
@@ -401,7 +401,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     (async () => {
       try {
         const tab = await getCurrentContext();
-        if (!tab) throw new Error('Klikni na ikonu faktySKCZ v lište Chrome. Otvorí panel a spustí overovanie aktuálneho tabu.');
+        if (!tab) throw new Error('Klikni na ikonu DETEKTOR v lište Chrome. Otvorí panel a spustí overovanie aktuálneho tabu.');
         await startCaptureForTab(tab);
         sendResponse({ ok: true });
       } catch (e) {
