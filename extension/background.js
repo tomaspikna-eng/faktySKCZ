@@ -1,5 +1,6 @@
 const OFFSCREEN_URL = 'offscreen.html';
 const FUNCTION_URL = 'https://mexrrchqiehzvrefftym.supabase.co/functions/v1/process-audio';
+const OVERLAY_API_URL = 'https://mexrrchqiehzvrefftym.supabase.co/functions/v1/overlay-api';
 const PUBLISHABLE_KEY = 'sb_publishable_NZCEN4vfkbyxQrzCa8YR8Q_i4ZQCH2T';
 const BACKEND_TIMEOUT_MS = 45000;
 
@@ -92,6 +93,35 @@ function isHttpTab(tab) {
   return !!tab?.id && /^https?:/i.test(tab.url || '');
 }
 
+async function createStreamOverlay({ sessionId, sourceUrl, mediaTitle, startedAt }) {
+  const res = await fetch(OVERLAY_API_URL, {
+    method:'POST',
+    headers:{
+      'content-type':'application/json',
+      'apikey':PUBLISHABLE_KEY,
+      'authorization':'Bearer ' + PUBLISHABLE_KEY
+    },
+    body:JSON.stringify({
+      action:'create',
+      sessionId,
+      sourceUrl,
+      mediaTitle,
+      startedAt,
+      expiresHours:12
+    })
+  });
+  const raw = await res.text();
+  let data = {};
+  try { data = raw ? JSON.parse(raw) : {}; } catch {}
+  if (!res.ok || !data?.ok) throw new Error(data?.error || 'Stream overlay sa nepodarilo vytvoriť.');
+  return {
+    token:data.token,
+    expiresAt:data.expiresAt,
+    factcheckUrl:data.factcheckUrl,
+    scoreboardUrl:data.scoreboardUrl
+  };
+}
+
 async function startCaptureForTab(tab) {
   if (!isHttpTab(tab)) throw new Error('Otvor video alebo stream v bežnom HTTP/HTTPS tabe.');
 
@@ -106,6 +136,23 @@ async function startCaptureForTab(tab) {
   const startedAt = new Date().toISOString();
   const sessionId = crypto.randomUUID();
 
+  let streamOverlay = null;
+  try {
+    streamOverlay = await createStreamOverlay({
+      sessionId,
+      sourceUrl: tab.url || '',
+      mediaTitle: tab.title || 'Aktuálne video',
+      startedAt
+    });
+    await appendDebugEvent('stream_overlay_created', { tabId:tab.id, sessionId });
+  } catch (e) {
+    await appendDebugEvent('stream_overlay_error', {
+      tabId:tab.id,
+      sessionId,
+      error:e?.message || String(e)
+    });
+  }
+
   await chrome.storage.local.set({
     sessionClaims: [],
     rollingTranscript: '',
@@ -118,7 +165,8 @@ async function startCaptureForTab(tab) {
       title: tab.title || 'Aktuálne video',
       url: tab.url || '',
       favIconUrl: tab.favIconUrl || '',
-      startedAt
+      startedAt,
+      streamOverlay
     }
   });
 
