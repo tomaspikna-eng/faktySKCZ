@@ -69,6 +69,21 @@ async function processLoop() {
       });
 
       if (!reply?.ok) {
+        if (reply?.fatal === true) {
+          chrome.runtime.sendMessage({
+            type:'FC_RESULT',
+            tabId,
+            payload:{
+              error:reply?.error || 'Spracovanie bolo zastavené.',
+              errorCode:reply?.errorCode || 'fatal_error',
+              fatal:true,
+              transcript:'',
+              claims:[]
+            }
+          });
+          await stop();
+          return;
+        }
         throw new Error(reply?.error || 'Backend request zlyhal');
       }
 
