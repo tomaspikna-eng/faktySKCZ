@@ -27,6 +27,18 @@
     </div>
     <div id="statusLine" class="status-line">Pripravené.</div>
     <div id="errorBox" class="error hidden"></div>
+    <div id="streamBox" class="stream-box hidden">
+      <div class="stream-title" data-i18n="streamTitle">Stream Browser Source</div>
+      <div class="stream-row">
+        <label for="factOverlayUrl" data-i18n="factOverlay">LIVE fact-check</label>
+        <div class="stream-copy"><input id="factOverlayUrl" readonly><button id="copyFactOverlay" type="button" data-i18n="copy">Kopírovať</button></div>
+      </div>
+      <div class="stream-row">
+        <label for="scoreOverlayUrl" data-i18n="scoreOverlay">Aktéri – priebežné počty verdictov</label>
+        <div class="stream-copy"><input id="scoreOverlayUrl" readonly><button id="copyScoreOverlay" type="button" data-i18n="copy">Kopírovať</button></div>
+      </div>
+      <div class="stream-note" data-i18n="streamNote">V OBS/Streamlabs vlož URL ako Browser Source. Moderátor sa v prehľade aktérov nezobrazuje.</div>
+    </div>
   </header>
   <nav class="tabs" aria-label="Sekcie">
     <button class="tab active" data-tab="summary" type="button"><span data-i18n="summary">Prehľad</span></button>
