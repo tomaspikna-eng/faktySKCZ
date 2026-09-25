@@ -1,0 +1,580 @@
+<!doctype html>
+<html lang="sk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROJECT — Live fact-checking CZ/SK</title>
+<meta name="description" content="Live fact-checking videí a diskusií v slovenčine a češtine.">
+<style>
+:root{
+  --blue:#1f5fae;
+  --blue2:#0f4f96;
+  --navy:#17324f;
+  --text:#1d2a36;
+  --muted:#667788;
+  --line:#cfd8e3;
+  --soft:#f4f7fa;
+  --green:#237a4b;
+  --amber:#b46900;
+  --red:#b42a38;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  background:#e9eef3;
+  color:var(--text);
+  font-family:Verdana,Arial,Helvetica,sans-serif;
+  font-size:14px;
+  line-height:1.55;
+}
+a{color:var(--blue);text-decoration:underline}
+a:hover{color:var(--blue2)}
+.page{
+  width:min(980px,100%);
+  margin:0 auto;
+  background:white;
+  min-height:100vh;
+  border-left:1px solid #c7d0da;
+  border-right:1px solid #c7d0da;
+}
+.topline{
+  height:6px;
+  background:var(--blue);
+}
+.header{
+  padding:22px 28px 18px;
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-end;
+  gap:20px;
+  border-bottom:1px solid var(--line);
+}
+.brand{
+  font:700 28px/1 Georgia,"Times New Roman",serif;
+  color:var(--navy);
+  text-decoration:none;
+}
+.brand span{color:var(--blue)}
+.tagline{
+  font-size:11px;
+  color:var(--muted);
+  margin-top:5px;
+}
+.lang{
+  font-size:11px;
+  color:var(--muted);
+  white-space:nowrap;
+}
+.menu{
+  background:#edf3f8;
+  border-bottom:1px solid var(--line);
+  padding:0 28px;
+}
+.menu ul{
+  list-style:none;
+  padding:0;
+  margin:0;
+  display:flex;
+  flex-wrap:wrap;
+}
+.menu li{margin:0}
+.menu a{
+  display:block;
+  padding:10px 15px 9px 0;
+  margin-right:20px;
+  color:#31475e;
+  text-decoration:none;
+  font-size:12px;
+  font-weight:700;
+}
+.menu a:hover{color:var(--blue)}
+
+.content{
+  padding:0 28px 34px;
+}
+.hero{
+  padding:38px 0 34px;
+  border-bottom:1px solid var(--line);
+}
+.hero h1{
+  font:700 43px/1.08 Georgia,"Times New Roman",serif;
+  color:var(--navy);
+  margin:0 0 16px;
+  max-width:760px;
+}
+.hero p{
+  max-width:760px;
+  margin:0 0 18px;
+  color:#536475;
+  font-size:16px;
+}
+.hero-actions{
+  margin-top:20px;
+}
+.button{
+  display:inline-block;
+  background:var(--blue);
+  color:white;
+  text-decoration:none;
+  padding:9px 14px;
+  border:1px solid var(--blue2);
+  font-weight:700;
+  font-size:12px;
+  margin-right:8px;
+}
+.button:hover{background:var(--blue2);color:white}
+.textlink{
+  font-size:12px;
+  margin-left:6px;
+}
+.note{
+  margin-top:13px;
+  color:#7b8896;
+  font-size:11px;
+}
+
+.section{
+  padding:30px 0 28px;
+  border-bottom:1px solid var(--line);
+}
+.section:last-child{border-bottom:0}
+.section h2{
+  font:700 25px/1.2 Georgia,"Times New Roman",serif;
+  color:var(--navy);
+  margin:0 0 14px;
+}
+.section-intro{
+  color:#607080;
+  max-width:760px;
+  margin-bottom:18px;
+}
+.columns{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:34px;
+}
+.columns.three{
+  grid-template-columns:repeat(3,1fr);
+}
+.number{
+  font:bold 24px Georgia,"Times New Roman",serif;
+  color:var(--blue);
+  float:left;
+  margin-right:10px;
+  line-height:1;
+}
+.step h3{
+  margin:0 0 6px;
+  font-size:14px;
+  color:#2c4055;
+}
+.step p{
+  margin:0;
+  color:#657585;
+  font-size:12px;
+}
+.clear{clear:both}
+
+.browser-list{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:10px;
+}
+.browser-list th,
+.browser-list td{
+  border:1px solid #ccd6e0;
+  padding:10px 12px;
+  text-align:left;
+  vertical-align:top;
+}
+.browser-list th{
+  background:#edf3f8;
+  color:#33495f;
+  font-size:12px;
+}
+.browser-list td{
+  font-size:12px;
+}
+.browser-list .status{
+  color:var(--green);
+  font-weight:700;
+}
+.browser-list .planned{
+  color:#8a6d1d;
+  font-weight:700;
+}
+
+.sample{
+  margin-top:18px;
+  border:1px solid #cfd8e3;
+  background:#fafbfc;
+}
+.sample-head{
+  background:#eaf0f6;
+  border-bottom:1px solid #cfd8e3;
+  padding:8px 10px;
+  font-weight:700;
+  color:#33485d;
+  font-size:12px;
+}
+.sample-body{
+  display:grid;
+  grid-template-columns:120px 1fr;
+}
+.sample-left{
+  padding:13px;
+  border-right:1px solid #d6dee7;
+  background:white;
+}
+.sample-left b{
+  font:700 28px Georgia,"Times New Roman",serif;
+  display:block;
+  color:var(--blue);
+}
+.sample-left span{
+  display:block;
+  color:#7a8795;
+  font-size:10px;
+  margin-top:2px;
+}
+.sample-right{
+  padding:13px 15px;
+}
+.sample-verdict{
+  font-weight:700;
+  color:var(--green);
+  margin-bottom:4px;
+}
+.sample-claim{
+  font-weight:700;
+  color:#2e3f50;
+  margin-bottom:6px;
+}
+.sample-explain{
+  color:#627181;
+  font-size:12px;
+}
+.sample-meta{
+  margin-top:8px;
+  font-size:11px;
+  color:#7b8896;
+}
+
+.pricing{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:10px;
+}
+.pricing th,
+.pricing td{
+  border:1px solid #cbd5df;
+  padding:10px 12px;
+  text-align:left;
+}
+.pricing th{
+  background:#edf3f8;
+  color:#31475d;
+  font-size:12px;
+}
+.pricing td{
+  font-size:12px;
+}
+.pricing td.price{
+  font-weight:700;
+  color:var(--navy);
+  white-space:nowrap;
+}
+.pricing tr:first-child td{
+  background:#fbfdff;
+}
+.small{
+  font-size:11px;
+  color:#7a8794;
+}
+
+.rules{
+  margin:0;
+  padding-left:20px;
+}
+.rules li{
+  margin:7px 0;
+  color:#536475;
+}
+.media-box{
+  border-top:3px solid var(--blue);
+  background:#f5f8fb;
+  padding:16px 18px;
+  margin-top:18px;
+}
+.media-box h3{
+  margin:0 0 8px;
+  color:var(--navy);
+  font-size:16px;
+}
+.media-box p{
+  margin:0 0 10px;
+  color:#5c6d7d;
+}
+
+.footer{
+  background:#edf3f8;
+  border-top:1px solid var(--line);
+  padding:18px 28px 22px;
+  font-size:11px;
+  color:#6f7d8a;
+}
+.footer-links{
+  margin-bottom:8px;
+}
+.footer-links a{
+  margin-right:14px;
+  font-size:11px;
+}
+
+@media(max-width:760px){
+  .header{align-items:flex-start;flex-direction:column}
+  .hero h1{font-size:34px}
+  .columns,.columns.three{grid-template-columns:1fr}
+  .sample-body{grid-template-columns:1fr}
+  .sample-left{border-right:0;border-bottom:1px solid #d6dee7}
+  .menu ul{display:block}
+  .menu a{padding:8px 0;margin:0}
+  .pricing,.browser-list{font-size:11px}
+  .pricing th,.pricing td,.browser-list th,.browser-list td{padding:8px}
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="topline"></div>
+
+  <header class="header">
+    <div>
+      <a href="#top" class="brand">PRO<span>JECT</span></a>
+      <div class="tagline">Live fact-checking pre Slovensko a Česko</div>
+    </div>
+    <div class="lang">SK | CZ</div>
+  </header>
+
+  <nav class="menu">
+    <ul>
+      <li><a href="#ako">Ako to funguje</a></li>
+      <li><a href="#instalacia">Inštalácia</a></li>
+      <li><a href="#cennik">Cenník</a></li>
+      <li><a href="#metodika">Metodika</a></li>
+      <li><a href="#media">Pre médiá</a></li>
+    </ul>
+  </nav>
+
+  <main class="content" id="top">
+    <section class="hero">
+      <h1>Overuj tvrdenia priamo počas videa.</h1>
+      <p>
+        Rozšírenie prehliadača počúva audio z prehrávaného videa, vyberá overiteľné tvrdenia
+        a priebežne zobrazuje verdikt, mieru istoty a stručné vysvetlenie.
+      </p>
+      <div class="hero-actions">
+        <a href="#instalacia" class="button">Nainštalovať rozšírenie</a>
+        <a href="#ako" class="textlink">Ako to funguje</a>
+      </div>
+      <div class="note">
+        Slovenčina + čeština • titulky nie sú potrebné • bez mesačného predplatného
+      </div>
+    </section>
+
+    <section class="section" id="ako">
+      <h2>Ako to funguje</h2>
+      <div class="section-intro">
+        Produkt má byť jednoduchý aj pre človeka, ktorý nechce riešiť technické nastavenia.
+      </div>
+
+      <div class="columns three">
+        <div class="step">
+          <div class="number">1.</div>
+          <h3>Spusti video</h3>
+          <p>Otvor politickú diskusiu, rozhovor alebo spravodajský stream.</p>
+          <div class="clear"></div>
+        </div>
+        <div class="step">
+          <div class="number">2.</div>
+          <h3>Zapni fact-check</h3>
+          <p>Rozšírenie začne počúvať zvuk aktuálneho tabu bez potreby titulkov.</p>
+          <div class="clear"></div>
+        </div>
+        <div class="step">
+          <div class="number">3.</div>
+          <h3>Sleduj výsledky</h3>
+          <p>Výroky sa zobrazujú v bočnom paneli spolu s verdiktom a istotou overenia.</p>
+          <div class="clear"></div>
+        </div>
+      </div>
+
+      <div class="sample">
+        <div class="sample-head">Príklad výsledku</div>
+        <div class="sample-body">
+          <div class="sample-left">
+            <b>86 %</b>
+            <span>ISTOTA OVERENIA</span>
+          </div>
+          <div class="sample-right">
+            <div class="sample-verdict">PREVAŽNE PRAVDIVÉ</div>
+            <div class="sample-claim">„Modelový výrok z práve prehrávanej diskusie.“</div>
+            <div class="sample-explain">
+              Dostupné zdroje podporujú jadro tvrdenia, no časť formulácie potrebuje dodatočný kontext.
+            </div>
+            <div class="sample-meta">00:14:28 · Zdroje · Detail výroku</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="instalacia">
+      <h2>Inštalácia</h2>
+      <div class="section-intro">
+        Na MVP budú podporované najpoužívanejšie desktopové prehliadače v Česku a na Slovensku.
+      </div>
+
+      <table class="browser-list">
+        <thead>
+          <tr>
+            <th>Prehliadač</th>
+            <th>Distribúcia</th>
+            <th>Stav</th>
+            <th>Odkaz</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Google Chrome</strong></td>
+            <td>Chrome Web Store</td>
+            <td class="status">MVP</td>
+            <td><a href="#">Nainštalovať</a></td>
+          </tr>
+          <tr>
+            <td><strong>Microsoft Edge</strong></td>
+            <td>Edge Add-ons</td>
+            <td class="status">MVP</td>
+            <td><a href="#">Nainštalovať</a></td>
+          </tr>
+          <tr>
+            <td><strong>Mozilla Firefox</strong></td>
+            <td>Firefox Add-ons</td>
+            <td class="planned">Nasleduje</td>
+            <td><a href="#">Viac informácií</a></td>
+          </tr>
+          <tr>
+            <td><strong>Opera</strong></td>
+            <td>Opera Add-ons</td>
+            <td class="planned">Nasleduje</td>
+            <td><a href="#">Viac informácií</a></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p class="small">
+        Brave a Vivaldi môžu používať kompatibilnú Chromium verziu bez samostatnej marketingovej stránky.
+      </p>
+    </section>
+
+    <section class="section" id="cennik">
+      <h2>Cenník</h2>
+      <div class="section-intro">
+        Jednorazová aktivácia pluginu a následné dobíjanie kreditu podľa skutočného používania.
+      </div>
+
+      <table class="pricing">
+        <thead>
+          <tr>
+            <th>Produkt</th>
+            <th>Obsah</th>
+            <th>Cena</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Aktivácia pluginu</strong></td>
+            <td>Prístup k rozšíreniu + úvodný AI kredit</td>
+            <td class="price">1,99 €</td>
+          </tr>
+          <tr>
+            <td>Dobitie 3 hodiny</td>
+            <td>180 minút live fact-checkingu</td>
+            <td class="price">1,99 €</td>
+          </tr>
+          <tr>
+            <td>Dobitie 10 hodín</td>
+            <td>600 minút live fact-checkingu</td>
+            <td class="price">4,99 €</td>
+          </tr>
+          <tr>
+            <td>Dobitie 25 hodín</td>
+            <td>1 500 minút live fact-checkingu</td>
+            <td class="price">9,99 €</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p class="small">
+        Ceny a počet zahrnutých minút sú zatiaľ pracovné hodnoty pre MVP.
+      </p>
+    </section>
+
+    <section class="section" id="metodika">
+      <h2>Metodika a transparentnosť</h2>
+      <div class="columns">
+        <div>
+          <p>
+            Systém má používať rovnaký postup pri všetkých rečníkoch bez ohľadu na politickú príslušnosť,
+            médium alebo objednávateľa.
+          </p>
+          <ul class="rules">
+            <li>Platba ovplyvňuje iba dostupný čas služby.</li>
+            <li>„Neoverené“ je legitímny výsledok.</li>
+            <li>Percento znamená istotu zhody a overenia, nie „percento pravdy človeka“.</li>
+            <li>Zdroje a audit sa uchovávajú pre spätnú kontrolu.</li>
+          </ul>
+        </div>
+        <div>
+          <p>
+            Výsledok pri jednotlivom tvrdení môže byť napríklad:
+          </p>
+          <p>
+            <strong style="color:var(--green)">Pravdivé</strong><br>
+            <strong style="color:#55885f">Prevažne pravdivé</strong><br>
+            <strong style="color:var(--amber)">Zavádzajúce</strong><br>
+            <strong style="color:var(--red)">Nepravdivé</strong><br>
+            <strong style="color:var(--muted)">Neoverené</strong>
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="media">
+      <h2>Pre televízie a médiá</h2>
+      <div class="media-box">
+        <h3>Newsroom režim</h3>
+        <p>
+          Väčšie hodinové balíky, viac simultánnych streamov, exporty, audit a redakčné schválenie
+          pred zobrazením výsledku vo vysielaní.
+        </p>
+        <p>
+          <strong>Pracovné balíky:</strong> 100 h · 500 h · API / individuálne riešenie
+        </p>
+        <a href="mailto:kontakt@example.com">Kontakt pre médiá</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-links">
+      <a href="#">Metodika</a>
+      <a href="#">Ochrana súkromia</a>
+      <a href="#">Podmienky</a>
+      <a href="mailto:kontakt@example.com">Kontakt</a>
+    </div>
+    © 2026 PROJECT. Pracovný MVP návrh.
+  </footer>
+</div>
+</body>
+</html>
