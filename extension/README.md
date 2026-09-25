@@ -1,4 +1,4 @@
-# faktySKCZ Chrome Extension v0.6.1
+# faktySKCZ Chrome Extension v0.6.2
 
 MVP prerobené z popup rozhrania na natívny Chrome Side Panel.
 
