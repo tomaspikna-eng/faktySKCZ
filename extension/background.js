@@ -2,6 +2,7 @@ const OFFSCREEN_URL = 'offscreen.html';
 const FUNCTION_URL = 'https://mexrrchqiehzvrefftym.supabase.co/functions/v1/process-audio';
 const OVERLAY_API_URL = 'https://mexrrchqiehzvrefftym.supabase.co/functions/v1/overlay-api';
 const PUBLISHABLE_KEY = 'sb_publishable_NZCEN4vfkbyxQrzCa8YR8Q_i4ZQCH2T';
+const AUTH_URL = 'https://mexrrchqiehzvrefftym.supabase.co/auth/v1';
 const BACKEND_TIMEOUT_MS = 120000;
 
 async function getClientInstallId(){
@@ -14,7 +15,63 @@ async function getClientInstallId(){
   return id;
 }
 
-async function fetchCreditStatus(){
+async function authFetch(path,{method='POST',body=null,token=null}={}){
+  const headers={'content-type':'application/json','apikey':PUBLISHABLE_KEY};
+  if(token)headers.authorization='Bearer '+token;
+  const res=await fetch(AUTH_URL+path,{
+    method,
+    headers,
+    body:body===null?undefined:JSON.stringify(body)
+  });
+  const raw=await res.text();
+  let data={};
+  try{data=raw?JSON.parse(raw):{}}catch{data={message:raw||'Neplatná odpoveď autentifikácie'}}
+  if(!res.ok){
+    const err=new Error(data?.msg||data?.message||data?.error_description||data?.error||('Auth '+res.status));
+    err.status=res.status;
+    err.code=data?.error_code||data?.code||null;
+    throw err;
+  }
+  return data;
+}
+
+async function saveAuthSession(data){
+  if(!data?.access_token||!data?.refresh_token)return null;
+  const session={
+    accessToken:data.access_token,
+    refreshToken:data.refresh_token,
+    expiresAt:Date.now()+Math.max(60,Number(data.expires_in||3600))*1000,
+    user:data.user||null
+  };
+  await chrome.storage.local.set({authSession:session});
+  return session;
+}
+
+async function clearAuthSession(){
+  await chrome.storage.local.remove(['authSession','authState']);
+}
+
+async function getValidAuthSession(){
+  const {authSession=null}=await chrome.storage.local.get('authSession');
+  if(!authSession?.accessToken)return null;
+  if(Number(authSession.expiresAt||0)>Date.now()+60000)return authSession;
+  if(!authSession.refreshToken){
+    await clearAuthSession();
+    return null;
+  }
+  try{
+    const data=await authFetch('/token?grant_type=refresh_token',{
+      body:{refresh_token:authSession.refreshToken}
+    });
+    return await saveAuthSession(data);
+  }catch{
+    await clearAuthSession();
+    return null;
+  }
+}
+
+async function bindAccount(session){
+  if(!session?.accessToken)return null;
   const clientInstallId=await getClientInstallId();
   const res=await fetch(FUNCTION_URL,{
     method:'POST',
@@ -23,10 +80,83 @@ async function fetchCreditStatus(){
       'apikey':PUBLISHABLE_KEY,
       'authorization':'Bearer '+PUBLISHABLE_KEY
     },
-    body:JSON.stringify({action:'credit_status',clientInstallId})
+    body:JSON.stringify({
+      action:'bind_account',
+      clientInstallId,
+      accessToken:session.accessToken
+    })
   });
   const data=await res.json().catch(()=>({}));
+  if(!res.ok)throw new Error(data?.userMessage||data?.error||'Prepojenie účtu zlyhalo.');
+  if(data?.credits)await chrome.storage.local.set({creditState:data.credits});
+  if(data?.account)await chrome.storage.local.set({authState:data.account});
+  return data;
+}
+
+async function signInDetektor(email,password){
+  const data=await authFetch('/token?grant_type=password',{body:{email,password}});
+  const session=await saveAuthSession(data);
+  await bindAccount(session);
+  return {user:session?.user||data?.user||null};
+}
+
+async function signUpDetektor(email,password){
+  const data=await authFetch('/signup',{
+    body:{email,password,data:{product:'detektor'}}
+  });
+  if(data?.access_token&&data?.refresh_token){
+    const session=await saveAuthSession(data);
+    await bindAccount(session);
+    return {user:session?.user||data?.user||null,confirmationRequired:false};
+  }
+  await chrome.storage.local.set({pendingSignupEmail:email});
+  return {user:data?.user||null,confirmationRequired:true};
+}
+
+async function signOutDetektor(){
+  const session=await getValidAuthSession();
+  if(session?.accessToken){
+    try{await authFetch('/logout',{token:session.accessToken,body:{scope:'local'}})}catch{}
+  }
+  await clearAuthSession();
+  const credits=await fetchCreditStatus();
+  return {ok:true,credits};
+}
+
+async function fetchAuthState(){
+  const session=await getValidAuthSession();
+  if(!session)return null;
+  let user=session.user||null;
+  try{
+    user=await authFetch('/user',{method:'GET',token:session.accessToken});
+    const next={...session,user};
+    await chrome.storage.local.set({authSession:next,authState:{id:user?.id||null,email:user?.email||null}});
+  }catch{}
+  return user?{id:user.id,email:user.email||null}:null;
+}
+
+async function fetchCreditStatus(){
+  const clientInstallId=await getClientInstallId();
+  const session=await getValidAuthSession();
+  const res=await fetch(FUNCTION_URL,{
+    method:'POST',
+    headers:{
+      'content-type':'application/json',
+      'apikey':PUBLISHABLE_KEY,
+      'authorization':'Bearer '+PUBLISHABLE_KEY
+    },
+    body:JSON.stringify({
+      action:'credit_status',
+      clientInstallId,
+      accessToken:session?.accessToken||null
+    })
+  });
+  const data=await res.json().catch(()=>({}));
+  if(res.status===401&&data?.errorCode==='auth_session_expired'){
+    await clearAuthSession();
+  }
   if(res.ok&&data?.credits)await chrome.storage.local.set({creditState:data.credits});
+  if(res.ok)await chrome.storage.local.set({authState:data?.account||null});
   return data?.credits||null;
 }
 
@@ -54,9 +184,11 @@ async function processAudioRequest(payload, tabId) {
     const { rollingTranscript = '', captureState = {}, speakerProfiles = [] } =
       await chrome.storage.local.get(['rollingTranscript','captureState','speakerProfiles']);
     const clientInstallId=await getClientInstallId();
+    const authSession=await getValidAuthSession();
     const requestPayload = {
       ...(payload || {}),
       clientInstallId,
+      accessToken:authSession?.accessToken||null,
       contextBefore: String(rollingTranscript || '').slice(-2500),
       sessionId: payload?.sessionId || captureState.sessionId || null,
       sourceUrl: captureState.url || '',
@@ -385,6 +517,52 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           fatal: e?.fatal === true
         });
       }
+    })();
+    return true;
+  }
+
+  if (msg?.type === 'DETEKTOR_SIGN_IN') {
+    (async()=>{
+      try{
+        const email=String(msg.email||'').trim().toLowerCase();
+        const password=String(msg.password||'');
+        if(!email||!password)throw new Error('Zadaj email a heslo.');
+        const result=await signInDetektor(email,password);
+        const credits=await fetchCreditStatus();
+        sendResponse({ok:true,user:result.user,credits});
+      }catch(e){sendResponse({ok:false,error:e?.message||String(e)})}
+    })();
+    return true;
+  }
+
+  if (msg?.type === 'DETEKTOR_SIGN_UP') {
+    (async()=>{
+      try{
+        const email=String(msg.email||'').trim().toLowerCase();
+        const password=String(msg.password||'');
+        if(!email||!password)throw new Error('Zadaj email a heslo.');
+        if(password.length<6)throw new Error('Heslo musí mať aspoň 6 znakov.');
+        const result=await signUpDetektor(email,password);
+        sendResponse({ok:true,...result});
+      }catch(e){sendResponse({ok:false,error:e?.message||String(e)})}
+    })();
+    return true;
+  }
+
+  if (msg?.type === 'DETEKTOR_SIGN_OUT') {
+    (async()=>{
+      try{sendResponse(await signOutDetektor())}
+      catch(e){sendResponse({ok:false,error:e?.message||String(e)})}
+    })();
+    return true;
+  }
+
+  if (msg?.type === 'GET_AUTH_STATE') {
+    (async()=>{
+      try{
+        const account=await fetchAuthState();
+        sendResponse({ok:true,account});
+      }catch(e){sendResponse({ok:false,error:e?.message||String(e)})}
     })();
     return true;
   }
