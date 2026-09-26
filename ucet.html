@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>DETEKTOR — Účet</title>
-<link rel="icon" href="assets/detektor-logo.png" type="image/png">
+<link rel="icon" href="assets/detektor-logo.png?v=3" type="image/png">
 <meta name="robots" content="noindex,nofollow">
 <style>
 :root{--blue:#1f5fae;--blue2:#0f4f96;--navy:#17324f;--text:#1d2a36;--muted:#667788;--line:#cfd8e3;--soft:#f4f7fa;--green:#237a4b;--red:#b42a38}
@@ -13,7 +13,7 @@
 </head>
 <body>
 <div class="page"><div class="topline"></div>
-<header><div><a class="brand" href="index.html"><img src="assets/detektor-logo.png" alt="">DETEK<span>TOR</span></a><div class="muted">Účet a detektory</div></div><div><a href="login.html">Prihlásenie</a> · <a href="index.html">Späť na web</a></div></header>
+<header><div><a class="brand" href="index.html"><img src="assets/detektor-logo.png?v=3" alt="">DETEK<span>TOR</span></a><div class="muted">Účet a detektory</div></div><div><a href="login.html">Prihlásenie</a> · <a href="index.html">Späť na web</a></div></header>
 <main>
 <section class="panel" id="authPanel">
 <h1>Účet DETEKTOR</h1>
@@ -22,7 +22,7 @@
 <div class="form">
 <input id="email" type="email" autocomplete="email" placeholder="Email">
 <input id="password" type="password" autocomplete="current-password" placeholder="Heslo">
-<div class="actions"><button class="button" id="loginBtn">Prihlásiť</button><button class="button secondary" id="signupBtn">Vytvoriť účet</button></div>
+<div class="actions"><button class="button" id="loginBtn">Prihlásiť</button><a class="button secondary" href="registracia.html" style="text-decoration:none">Vytvoriť účet</a></div>
 </div>
 </div>
 <div id="loggedIn" class="hidden">
@@ -47,7 +47,7 @@
 </div>
 </section>
 </main>
-<footer>© 2026 DETEKTOR · účet, zostatok a nákupy</footer>
+<footer>© 2026 DETEKTOR · <a href="registracia.html">Registrácia</a> · <a href="podmienky.html">Podmienky</a> · <a href="ochrana-sukromia.html">Ochrana súkromia</a> · <a href="cookies.html">Cookies</a></footer>
 </div>
 <script>
 const SUPABASE_URL='https://mexrrchqiehzvrefftym.supabase.co';
@@ -103,7 +103,6 @@ async function refresh(){
   renderAccount(d?.account||{id:s.user?.id,email:s.user?.email},d?.credits||null);
 }
 $('loginBtn').onclick=async()=>{try{$('message').textContent='Prihlasujem…';const d=await authFetch('/token?grant_type=password',{email:$('email').value.trim().toLowerCase(),password:$('password').value});const s=saveSession(d);await backend('bind_account',s);$('password').value='';$('message').textContent='Prihlásenie úspešné.';await refresh()}catch(e){$('message').textContent=e.message}};
-$('signupBtn').onclick=async()=>{try{const email=$('email').value.trim().toLowerCase(),password=$('password').value;if(password.length<6)throw new Error('Heslo musí mať aspoň 6 znakov.');$('message').textContent='Vytváram účet…';const d=await authFetch('/signup',{email,password,data:{product:'detektor'}});if(d?.access_token){const s=saveSession(d);await backend('bind_account',s);$('message').textContent='Účet vytvorený.';await refresh()}else{$('message').textContent='Účet je vytvorený. Potvrď email a potom sa prihlás.'}}catch(e){$('message').textContent=e.message}};
 $('logoutBtn').onclick=async()=>{const s=await validSession();if(s?.accessToken)try{await authFetch('/logout',{scope:'local'},s.accessToken)}catch{}localStorage.removeItem('detektor_auth_session');$('message').textContent='Odhlásený.';renderAccount(null,null)};
 refresh();
 </script>
