@@ -1,4 +1,4 @@
-# DETEKTOR Chrome Extension v0.7.5
+# DETEKTOR Chrome Extension v0.7.6
 
 MVP prerobené z popup rozhrania na natívny Chrome Side Panel.
 
@@ -44,3 +44,5 @@ MVP prerobené z popup rozhrania na natívny Chrome Side Panel.
 - schválené logo DETEKTOR: modré D v čiernom kruhovom ráme na bielom pozadí
 
 - opravené centrovanie loga a orezávanie spodnej časti v hlavičke webu a sidebaru
+
+- bezpečný vnútorný okraj loga, aby sa kruh neorezával pri škálovaní
