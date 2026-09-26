@@ -51,18 +51,6 @@
       <div id="authMessage" class="auth-message"></div>
     </div>
     <div id="errorBox" class="error hidden"></div>
-    <div id="streamBox" class="stream-box hidden">
-      <div class="stream-title" data-i18n="streamTitle">Stream Browser Source</div>
-      <div class="stream-row">
-        <label for="factOverlayUrl" data-i18n="factOverlay">LIVE fact-check</label>
-        <div class="stream-copy"><input id="factOverlayUrl" readonly><button id="copyFactOverlay" type="button" data-i18n="copy">Kopírovať</button></div>
-      </div>
-      <div class="stream-row">
-        <label for="scoreOverlayUrl" data-i18n="scoreOverlay">Aktéri – priebežné počty verdictov</label>
-        <div class="stream-copy"><input id="scoreOverlayUrl" readonly><button id="copyScoreOverlay" type="button" data-i18n="copy">Kopírovať</button></div>
-      </div>
-      <div class="stream-note" data-i18n="streamNote">V OBS/Streamlabs vlož URL ako Browser Source. Moderátor sa v prehľade aktérov nezobrazuje.</div>
-    </div>
     <div id="speakerBox" class="speaker-box">
       <div class="stream-title" data-i18n="speakerTitle">Aktéri relácie</div>
       <div class="speaker-note" data-i18n="speakerNote">Počas hovorenia konkrétneho človeka zadaj meno a zachyť 3 s jeho hlasu. Max. 4 známi rečníci.</div>
@@ -73,14 +61,14 @@
     </div>
   </header>
   <nav class="tabs" aria-label="Sekcie">
-    <button class="tab active" data-tab="summary" type="button"><span data-i18n="summary">Prehľad</span></button>
+    <button class="tab" data-tab="summary" type="button"><span data-i18n="summary">Prehľad</span></button>
     <button class="tab" data-tab="facts" type="button"><span data-i18n="facts">Tvrdenia</span> <b id="factsCount">0</b></button>
     <button class="tab" data-tab="disputed" type="button"><span data-i18n="disputed">Sporné</span> <b id="disputedCount">0</b></button>
     <button class="tab" data-tab="patterns" type="button"><span data-i18n="patterns">Vzorce</span></button>
-    <button class="tab" data-tab="actors" type="button"><span data-i18n="actors">Aktéri</span></button>
+    <button class="tab active" data-tab="actors" type="button"><span data-i18n="actors">Aktéri</span></button>
   </nav>
   <main>
-    <section id="view-summary" class="view active">
+    <section id="view-summary" class="view">
       <div class="summary-grid">
         <div><strong id="sumAll">0</strong><span data-i18n="captured">Zachytené tvrdenia</span></div>
         <div><strong id="sumVerified">0</strong><span data-i18n="verified">Overené</span></div>
@@ -99,11 +87,25 @@
       <div class="filter-note" data-i18n="patternsNote">Tu sa zobrazia výroky, ktoré sa počas relácie opakujú.</div>
       <div id="patternsList" class="claim-list"></div>
     </section>
-    <section id="view-actors" class="view">
+    <section id="view-actors" class="view active actor-view">
+      <div class="actor-view-title">LIVE ŠTATISTIKY AKTÉROV</div>
       <div class="filter-note" data-i18n="actorsNote">Percentá zobrazujú iba rozdelenie fact-checkovaných tvrdení v tejto relácii. Nejde o hodnotenie osoby.</div>
       <div id="actorsList" class="actors-list"></div>
     </section>
   </main>
+
+  <div id="streamBox" class="stream-box stream-box-bottom hidden">
+    <div class="stream-title" data-i18n="streamTitle">Stream Browser Source</div>
+    <div class="stream-row">
+      <label for="factOverlayUrl" data-i18n="factOverlay">LIVE fact-check</label>
+      <div class="stream-copy"><input id="factOverlayUrl" readonly><button id="copyFactOverlay" type="button" data-i18n="copy">Kopírovať</button></div>
+    </div>
+    <div class="stream-row">
+      <label for="scoreOverlayUrl" data-i18n="scoreOverlay">Aktéri – priebežné počty verdictov</label>
+      <div class="stream-copy"><input id="scoreOverlayUrl" readonly><button id="copyScoreOverlay" type="button" data-i18n="copy">Kopírovať</button></div>
+    </div>
+    <div class="stream-note" data-i18n="streamNote">V OBS/Streamlabs vlož URL ako Browser Source. Moderátor sa v prehľade aktérov nezobrazuje.</div>
+  </div>
   <footer><span>FactCTP / Supabase EU</span><span>•</span><span data-i18n="noCaptions">bez titulkov</span></footer>
 </div>
 <script src="sidepanel.js"></script>
