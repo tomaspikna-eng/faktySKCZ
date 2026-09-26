@@ -380,17 +380,41 @@ async function startCaptureForTab(tab) {
 chrome.action.onClicked.addListener(async (tab) => {
   try {
     await chrome.sidePanel.open({ windowId: tab.windowId });
-    await startCaptureForTab(tab);
-  } catch (e) {
+
+    const { captureState = {} } = await chrome.storage.local.get('captureState');
+    if (captureState.active === true) return;
+
+    if (!isHttpTab(tab)) {
+      await chrome.storage.local.set({
+        processingState:{phase:'error',error:'Otvor video alebo stream v bežnom HTTP/HTTPS tabe.'},
+        captureState:{
+          active:false,
+          tabId:tab?.id||null,
+          windowId:tab?.windowId||null,
+          title:tab?.title||'',
+          url:tab?.url||'',
+          favIconUrl:tab?.favIconUrl||'',
+          streamOverlay:null
+        }
+      });
+      return;
+    }
+
     await chrome.storage.local.set({
-      processingState:{phase:'error',error:e?.message||String(e)},
+      processingState:{phase:'ready',error:null},
       captureState:{
         active:false,
-        tabId:tab?.id||null,
-        windowId:tab?.windowId||null,
-        title:tab?.title||'',
-        url:tab?.url||''
+        tabId:tab.id,
+        windowId:tab.windowId,
+        title:tab.title||'Aktuálne video',
+        url:tab.url||'',
+        favIconUrl:tab.favIconUrl||'',
+        streamOverlay:null
       }
+    });
+  } catch (e) {
+    await chrome.storage.local.set({
+      processingState:{phase:'error',error:e?.message||String(e)}
     });
   }
 });
@@ -624,8 +648,18 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg?.type === 'START_CAPTURE') {
     (async () => {
       try {
-        const tab = await getCurrentContext();
-        if (!tab) throw new Error('Klikni na ikonu DETEKTOR v lište Chrome. Otvorí panel a spustí overovanie aktuálneho tabu.');
+        const { captureState = {} } = await chrome.storage.local.get('captureState');
+        let tab = null;
+
+        if (captureState.tabId) {
+          try {
+            const candidate = await chrome.tabs.get(captureState.tabId);
+            if (isHttpTab(candidate)) tab = candidate;
+          } catch {}
+        }
+        if (!tab) tab = await getCurrentContext();
+
+        if (!tab) throw new Error('Otvor video alebo stream, klikni na ikonu DETEKTOR a potom stlač „Spustiť overovanie“.');
         await startCaptureForTab(tab);
         sendResponse({ ok: true });
       } catch (e) {
