@@ -8,7 +8,7 @@
 <meta name="robots" content="noindex,nofollow">
 <style>
 :root{--blue:#1f5fae;--blue2:#0f4f96;--navy:#17324f;--text:#1d2a36;--muted:#667788;--line:#cfd8e3;--soft:#f4f7fa;--red:#b42a38}
-*{box-sizing:border-box}body{margin:0;background:#e9eef3;color:var(--text);font:14px/1.55 Verdana,Arial,sans-serif}.page{width:min(720px,100%);margin:0 auto;min-height:100vh;background:#fff;border-left:1px solid #c7d0da;border-right:1px solid #c7d0da}.topline{height:6px;background:var(--blue)}header{padding:22px 28px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:20px;align-items:center;overflow:visible}.brand{font:700 28px/1.12 Georgia,"Times New Roman",serif;color:var(--navy);text-decoration:none;display:inline-flex;align-items:center;gap:8px;min-height:40px;overflow:visible;white-space:nowrap}.brand img{width:40px;height:40px;display:block;object-fit:contain;object-position:center;flex:0 0 40px;margin:0;padding:0;transform:none}.brand span{color:var(--blue)}header a{color:var(--blue)}main{padding:34px 28px}.panel{border:1px solid var(--line);padding:22px;background:#fff}.panel h1{font:700 28px Georgia,"Times New Roman",serif;color:var(--navy);margin:0 0 8px}.muted{color:var(--muted);font-size:12px}.form{display:grid;gap:10px;margin-top:18px}.form input{padding:11px 12px;border:1px solid var(--line);font:inherit}.actions{display:flex;gap:8px;flex-wrap:wrap}.button{border:1px solid var(--blue2);background:var(--blue);color:#fff;padding:10px 14px;font-weight:700;cursor:pointer}.button.secondary{background:#fff;color:var(--blue)}.message{margin-top:12px;font-size:12px;color:var(--muted);min-height:20px}.links{margin-top:16px;font-size:12px}.links a{color:var(--blue);margin-right:12px}footer{padding:18px 28px;border-top:1px solid var(--line);background:#edf3f8;font-size:11px;color:#6f7d8a;margin-top:28px}
+*{box-sizing:border-box}body{margin:0;background:#e9eef3;color:var(--text);font:14px/1.55 Verdana,Arial,sans-serif}.page{width:min(720px,100%);margin:0 auto;min-height:100vh;background:#fff;border-left:1px solid #c7d0da;border-right:1px solid #c7d0da}.topline{height:6px;background:var(--blue)}header{padding:22px 28px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:20px;align-items:center;overflow:visible}.brand{font:700 28px/1.12 Georgia,"Times New Roman",serif;color:var(--navy);text-decoration:none;display:inline-flex;align-items:center;gap:8px;min-height:40px;overflow:visible;white-space:nowrap}.brand img{width:40px;height:40px;display:block;object-fit:contain;object-position:center;flex:0 0 40px;margin:0;padding:0;transform:none}.brand span{color:var(--blue)}header a{color:var(--blue)}main{padding:34px 28px}.panel{border:1px solid var(--line);padding:22px;background:#fff}.panel h1{font:700 28px Georgia,"Times New Roman",serif;color:var(--navy);margin:0 0 8px}.muted{color:var(--muted);font-size:12px}.form{display:grid;gap:10px;margin-top:18px}.form input{padding:11px 12px;border:1px solid var(--line);font:inherit}.actions{display:flex;gap:8px;flex-wrap:wrap}.button{border:1px solid var(--blue2);background:var(--blue);color:#fff;padding:10px 14px;font-weight:700;cursor:pointer}.button.secondary{background:#fff;color:var(--blue)}.message{margin-top:12px;font-size:12px;color:var(--muted);min-height:20px}.message.ok{color:#237a4b}.message.err{color:#b42a38}.links{margin-top:16px;font-size:12px}.links a{color:var(--blue);margin-right:12px}footer{padding:18px 28px;border-top:1px solid var(--line);background:#edf3f8;font-size:11px;color:#6f7d8a;margin-top:28px}
 </style>
 </head>
 <body>
@@ -48,8 +48,48 @@ async function authFetch(path,body){const r=await fetch(AUTH_URL+path,{method:'P
   throw new Error(d?.msg||d?.message||d?.error_description||d?.error||'Prihlásenie zlyhalo.');
 }return d}
 async function bind(s){const r=await fetch(FUNCTION_URL,{method:'POST',headers:{'content-type':'application/json','apikey':KEY,'authorization':'Bearer '+KEY},body:JSON.stringify({action:'bind_account',clientInstallId:installId(),accessToken:s.accessToken})});if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d?.userMessage||d?.error||'Účet sa nepodarilo prepojiť.')}return r.json().catch(()=>({}))}
-$('loginBtn').onclick=async()=>{try{$('message').textContent='Prihlasujem…';const d=await authFetch('/token?grant_type=password',{email:$('email').value.trim().toLowerCase(),password:$('password').value});const s=saveSession(d);await bind(s);location.href='ucet.html'}catch(e){$('message').textContent=e.message}};
-try{const s=JSON.parse(localStorage.getItem('detektor_auth_session')||'null');if(s?.accessToken&&Number(s.expiresAt||0)>Date.now())location.href='ucet.html'}catch{}
+$('loginBtn').onclick=async()=>{try{$('message').className='message';$('message').textContent='Prihlasujem…';const d=await authFetch('/token?grant_type=password',{email:$('email').value.trim().toLowerCase(),password:$('password').value});const s=saveSession(d);await bind(s);location.href='ucet.html'}catch(e){$('message').className='message err';$('message').textContent=e.message}};
+
+(async()=>{
+  const hash=new URLSearchParams(location.hash.replace(/^#/,''));
+  const accessToken=hash.get('access_token');
+  const refreshToken=hash.get('refresh_token');
+  const expiresIn=Number(hash.get('expires_in')||3600);
+  const errorCode=hash.get('error_code');
+  const errorDescription=hash.get('error_description');
+
+  if(errorCode){
+    $('message').className='message err';
+    $('message').textContent=decodeURIComponent(errorDescription||'Overenie emailu zlyhalo. Skús odkaz znovu alebo sa prihlás.');
+    history.replaceState({},document.title,location.pathname+location.search);
+    return;
+  }
+
+  if(accessToken&&refreshToken){
+    const s=saveSession({access_token:accessToken,refresh_token:refreshToken,expires_in:expiresIn});
+    history.replaceState({},document.title,location.pathname+'?confirmed=1');
+    try{
+      await bind(s);
+      $('message').className='message ok';
+      $('message').textContent='Email bol úspešne overený. Presmerujem ťa do účtu…';
+      setTimeout(()=>location.href='ucet.html',700);
+      return;
+    }catch(e){
+      $('message').className='message ok';
+      $('message').textContent='Email bol úspešne overený. Prihlás sa do účtu.';
+    }
+  }
+
+  if(new URLSearchParams(location.search).get('confirmed')==='1'){
+    $('message').className='message ok';
+    $('message').textContent='Email bol úspešne overený. Môžeš sa prihlásiť.';
+  }
+
+  try{
+    const s=JSON.parse(localStorage.getItem('detektor_auth_session')||'null');
+    if(s?.accessToken&&Number(s.expiresAt||0)>Date.now())location.href='ucet.html';
+  }catch{}
+})();
 </script>
 </body>
 </html>
