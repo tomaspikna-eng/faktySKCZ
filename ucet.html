@@ -26,7 +26,13 @@
 </div>
 </div>
 <div id="loggedIn" class="hidden">
-<p>Prihlásený ako <strong id="accountEmail"></strong></p>
+<p>Prihlásený ako <strong id="accountDisplayName">Bez zobrazovaného mena</strong></p>
+<div class="form" style="margin:12px 0 14px">
+<label for="displayName"><strong>Zobrazované meno</strong></label>
+<input id="displayName" type="text" maxlength="40" placeholder="napr. TomasLive">
+<div class="muted">Toto meno sa zobrazuje v sidebare a pri streamových výstupoch. Email ostáva iba na prihlásenie.</div>
+<div class="actions"><button class="button secondary" id="saveDisplayNameBtn" type="button">Uložiť meno</button></div>
+</div>
 <button class="button danger" id="logoutBtn">Odhlásiť</button>
 </div>
 <div class="message" id="message"></div>
@@ -92,7 +98,9 @@ async function backend(action,s,extra={}){
 function renderAccount(account,credits){
   $('loggedOut').classList.toggle('hidden',!!account);
   $('loggedIn').classList.toggle('hidden',!account);
-  $('accountEmail').textContent=account?.email||'';
+  const displayName=String(account?.displayName||'').trim();
+  $('accountDisplayName').textContent=displayName||'Nastav si zobrazované meno';
+  if(document.activeElement!==$('displayName'))$('displayName').value=displayName;
   const n=Number(credits?.availableCredits??credits?.balanceCredits);
   $('balance').textContent=Number.isFinite(n)?n.toLocaleString('sk-SK',{maximumFractionDigits:2})+' det.':'—';
   $('billingMode').textContent=credits?.billingEnforced?'Aktívne účtovanie':'TEST režim · detektory sa zatiaľ neodpočítavajú';
@@ -105,6 +113,19 @@ async function refresh(){
   renderAccount(d?.account||{id:s.user?.id,email:s.user?.email},d?.credits||null);
 }
 $('loginBtn').onclick=async()=>{try{$('message').textContent='Prihlasujem…';const d=await authFetch('/token?grant_type=password',{email:$('email').value.trim().toLowerCase(),password:$('password').value});const s=saveSession(d);await backend('bind_account',s);$('password').value='';$('message').textContent='Prihlásenie úspešné.';await refresh()}catch(e){$('message').textContent=e.message}};
+$('saveDisplayNameBtn').onclick=async()=>{
+  try{
+    const s=await validSession();
+    if(!s)throw new Error('Najprv sa prihlás.');
+    const displayName=$('displayName').value.trim();
+    $('message').textContent='Ukladám zobrazované meno…';
+    const d=await backend('profile_update',s,{displayName});
+    $('message').textContent='Zobrazované meno uložené.';
+    const credits=(await backend('credit_status',s))?.credits||null;
+    renderAccount(d?.account||null,credits);
+  }catch(e){$('message').textContent=e.message||'Meno sa nepodarilo uložiť.'}
+};
+
 $('logoutBtn').onclick=async()=>{const s=await validSession();if(s?.accessToken)try{await authFetch('/logout',{scope:'local'},s.accessToken)}catch{}localStorage.removeItem('detektor_auth_session');$('message').textContent='Odhlásený.';renderAccount(null,null)};
 
 document.querySelectorAll('.buy-test').forEach(btn=>btn.onclick=async()=>{
