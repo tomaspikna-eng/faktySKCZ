@@ -27,9 +27,14 @@ async function authFetch(path,{method='POST',body=null,token=null}={}){
   let data={};
   try{data=raw?JSON.parse(raw):{}}catch{data={message:raw||'Neplatná odpoveď autentifikácie'}}
   if(!res.ok){
-    const err=new Error(data?.msg||data?.message||data?.error_description||data?.error||('Auth '+res.status));
+    const code=data?.error_code||data?.code||null;
+    const rawMessage=data?.msg||data?.message||data?.error_description||data?.error||('Auth '+res.status);
+    const message=(code==='invalid_credentials'||/invalid login credentials/i.test(rawMessage))
+      ? 'Nesprávny email alebo heslo.'
+      : rawMessage;
+    const err=new Error(message);
     err.status=res.status;
-    err.code=data?.error_code||data?.code||null;
+    err.code=code;
     throw err;
   }
   return data;
