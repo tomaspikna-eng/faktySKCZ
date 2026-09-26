@@ -169,7 +169,9 @@ async function render(){
   $('authLoggedOut').classList.toggle('hidden',!!account?.id);
   $('authLoggedIn').classList.toggle('hidden',!account?.id);
   $('accountStatus').textContent=account?.id?(lang==='cz'?'Přihlášen':'Prihlásený'):(lang==='cz'?'Nepřihlášen':'Neprihlásený');
-  $('accountEmail').textContent=account?.email||'';
+  const displayName=String(account?.displayName||'').trim();
+  $('accountDisplayName').textContent=displayName || (lang==='cz'?'Nastav zobrazované jméno':'Nastav zobrazované meno');
+  if(document.activeElement!==$('profileDisplayName')) $('profileDisplayName').value=displayName;
 
   const overlay=capture.streamOverlay||null;
   if(overlay?.factcheckUrl&&overlay?.scoreboardUrl){
@@ -267,7 +269,6 @@ $('langBtn').addEventListener('click',async()=>{lang=lang==='sk'?'cz':'sk';await
 
 async function refreshAccountAndCredits(){
   try{await chrome.runtime.sendMessage({type:'GET_AUTH_STATE'});}catch{}
-  try{await chrome.runtime.sendMessage({type:'GET_AUTH_STATE'});}catch{}
   try{await chrome.runtime.sendMessage({type:'GET_CREDIT_STATUS'});}catch{}
   await render();
 }
@@ -302,6 +303,18 @@ $('signUpBtn').addEventListener('click',async()=>{
     $('authMessage').textContent='Účet je vytvorený a prihlásený.';
     await refreshAccountAndCredits();
   }
+});
+
+$('saveDisplayNameBtn').addEventListener('click',async()=>{
+  const displayName=$('profileDisplayName').value.trim();
+  $('authMessage').textContent='Ukladám zobrazované meno…';
+  const r=await chrome.runtime.sendMessage({type:'DETEKTOR_UPDATE_PROFILE',displayName});
+  if(!r?.ok){
+    $('authMessage').textContent=r?.error||'Meno sa nepodarilo uložiť.';
+    return;
+  }
+  $('authMessage').textContent='Zobrazované meno uložené.';
+  await refreshAccountAndCredits();
 });
 
 $('signOutBtn').addEventListener('click',async()=>{
