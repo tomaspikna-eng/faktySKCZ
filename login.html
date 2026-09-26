@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="sk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DETEKTOR — Prihlásenie</title>
+<meta name="robots" content="noindex,nofollow">
+<style>
+:root{--blue:#1f5fae;--blue2:#0f4f96;--navy:#17324f;--text:#1d2a36;--muted:#667788;--line:#cfd8e3;--soft:#f4f7fa;--red:#b42a38}
+*{box-sizing:border-box}body{margin:0;background:#e9eef3;color:var(--text);font:14px/1.55 Verdana,Arial,sans-serif}.page{width:min(720px,100%);margin:0 auto;min-height:100vh;background:#fff;border-left:1px solid #c7d0da;border-right:1px solid #c7d0da}.topline{height:6px;background:var(--blue)}header{padding:22px 28px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:20px;align-items:end}.brand{font:700 28px/1 Georgia,"Times New Roman",serif;color:var(--navy);text-decoration:none}.brand span{color:var(--blue)}header a{color:var(--blue)}main{padding:34px 28px}.panel{border:1px solid var(--line);padding:22px;background:#fff}.panel h1{font:700 28px Georgia,"Times New Roman",serif;color:var(--navy);margin:0 0 8px}.muted{color:var(--muted);font-size:12px}.form{display:grid;gap:10px;margin-top:18px}.form input{padding:11px 12px;border:1px solid var(--line);font:inherit}.actions{display:flex;gap:8px;flex-wrap:wrap}.button{border:1px solid var(--blue2);background:var(--blue);color:#fff;padding:10px 14px;font-weight:700;cursor:pointer}.button.secondary{background:#fff;color:var(--blue)}.message{margin-top:12px;font-size:12px;color:var(--muted);min-height:20px}.links{margin-top:16px;font-size:12px}.links a{color:var(--blue);margin-right:12px}footer{padding:18px 28px;border-top:1px solid var(--line);background:#edf3f8;font-size:11px;color:#6f7d8a;margin-top:28px}
+</style>
+</head>
+<body>
+<div class="page"><div class="topline"></div>
+<header><div><a class="brand" href="index.html">DETEK<span>TOR</span></a><div class="muted">Prihlásenie do účtu</div></div><a href="index.html">Späť na web</a></header>
+<main>
+<section class="panel">
+<h1>Prihlásenie</h1>
+<p class="muted">Použi rovnaký účet na webe aj v rozšírení DETEKTOR.</p>
+<div class="form">
+<input id="email" type="email" autocomplete="email" placeholder="Email">
+<input id="password" type="password" autocomplete="current-password" placeholder="Heslo">
+<div class="actions">
+<button class="button" id="loginBtn" type="button">Prihlásiť</button>
+<button class="button secondary" id="signupBtn" type="button">Vytvoriť účet</button>
+</div>
+</div>
+<div class="message" id="message"></div>
+<div class="links"><a href="ucet.html">Účet a detektory</a><a href="index.html#download">Stiahnuť rozšírenie</a></div>
+</section>
+</main>
+<footer>© 2026 DETEKTOR</footer>
+</div>
+<script>
+const SUPABASE_URL='https://mexrrchqiehzvrefftym.supabase.co';
+const KEY='sb_publishable_NZCEN4vfkbyxQrzCa8YR8Q_i4ZQCH2T';
+const AUTH_URL=SUPABASE_URL+'/auth/v1';
+const FUNCTION_URL=SUPABASE_URL+'/functions/v1/process-audio';
+const $=id=>document.getElementById(id);
+function installId(){let id=localStorage.getItem('detektor_web_install_id');if(!id){id='web:'+crypto.randomUUID();localStorage.setItem('detektor_web_install_id',id)}return id}
+function saveSession(d){if(!d?.access_token||!d?.refresh_token)return null;const s={accessToken:d.access_token,refreshToken:d.refresh_token,expiresAt:Date.now()+Number(d.expires_in||3600)*1000,user:d.user||null};localStorage.setItem('detektor_auth_session',JSON.stringify(s));return s}
+async function authFetch(path,body){const r=await fetch(AUTH_URL+path,{method:'POST',headers:{'content-type':'application/json','apikey':KEY},body:JSON.stringify(body)});const raw=await r.text();let d={};try{d=raw?JSON.parse(raw):{}}catch{d={message:raw}}if(!r.ok)throw new Error(d?.msg||d?.message||d?.error_description||d?.error||'Prihlásenie zlyhalo.');return d}
+async function bind(s){const r=await fetch(FUNCTION_URL,{method:'POST',headers:{'content-type':'application/json','apikey':KEY,'authorization':'Bearer '+KEY},body:JSON.stringify({action:'bind_account',clientInstallId:installId(),accessToken:s.accessToken})});if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d?.userMessage||d?.error||'Účet sa nepodarilo prepojiť.')}return r.json().catch(()=>({}))}
+$('loginBtn').onclick=async()=>{try{$('message').textContent='Prihlasujem…';const d=await authFetch('/token?grant_type=password',{email:$('email').value.trim().toLowerCase(),password:$('password').value});const s=saveSession(d);await bind(s);location.href='ucet.html'}catch(e){$('message').textContent=e.message}};
+$('signupBtn').onclick=async()=>{try{const email=$('email').value.trim().toLowerCase(),password=$('password').value;if(password.length<6)throw new Error('Heslo musí mať aspoň 6 znakov.');$('message').textContent='Vytváram účet…';const d=await authFetch('/signup',{email,password,data:{product:'detektor'}});if(d?.access_token){const s=saveSession(d);await bind(s);location.href='ucet.html'}else{$('message').textContent='Účet je vytvorený. Potvrď email a potom sa prihlás.'}}catch(e){$('message').textContent=e.message}};
+try{const s=JSON.parse(localStorage.getItem('detektor_auth_session')||'null');if(s?.accessToken&&Number(s.expiresAt||0)>Date.now())location.href='ucet.html'}catch{}
+</script>
+</body>
+</html>
