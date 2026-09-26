@@ -128,6 +128,30 @@ async function signOutDetektor(){
   return {ok:true,credits};
 }
 
+async function profileBackend(action,extra={}){
+  const session=await getValidAuthSession();
+  if(!session?.accessToken)return null;
+  const clientInstallId=await getClientInstallId();
+  const res=await fetch(FUNCTION_URL,{
+    method:'POST',
+    headers:{
+      'content-type':'application/json',
+      'apikey':PUBLISHABLE_KEY,
+      'authorization':'Bearer '+PUBLISHABLE_KEY
+    },
+    body:JSON.stringify({
+      action,
+      clientInstallId,
+      accessToken:session.accessToken,
+      ...extra
+    })
+  });
+  const data=await res.json().catch(()=>({}));
+  if(!res.ok)throw new Error(data?.userMessage||data?.error||'Nastavenie účtu zlyhalo.');
+  if(data?.account)await chrome.storage.local.set({authState:data.account});
+  return data;
+}
+
 async function fetchAuthState(){
   const session=await getValidAuthSession();
   if(!session)return null;
@@ -135,9 +159,14 @@ async function fetchAuthState(){
   try{
     user=await authFetch('/user',{method:'GET',token:session.accessToken});
     const next={...session,user};
-    await chrome.storage.local.set({authSession:next,authState:{id:user?.id||null,email:user?.email||null}});
-  }catch{}
-  return user?{id:user.id,email:user.email||null}:null;
+    await chrome.storage.local.set({authSession:next});
+    const profile=await profileBackend('profile_get');
+    const account=profile?.account||{id:user?.id||null,displayName:null};
+    await chrome.storage.local.set({authState:account});
+    return account;
+  }catch{
+    return user?{id:user.id,displayName:null}:null;
+  }
 }
 
 async function fetchCreditStatus(){
@@ -591,6 +620,18 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       try{
         const account=await fetchAuthState();
         sendResponse({ok:true,account});
+      }catch(e){sendResponse({ok:false,error:e?.message||String(e)})}
+    })();
+    return true;
+  }
+
+  if (msg?.type === 'DETEKTOR_UPDATE_PROFILE') {
+    (async()=>{
+      try{
+        const displayName=String(msg.displayName||'').trim();
+        if(displayName.length<2||displayName.length>40)throw new Error('Zobrazované meno musí mať 2 až 40 znakov.');
+        const data=await profileBackend('profile_update',{displayName});
+        sendResponse({ok:true,account:data?.account||null});
       }catch(e){sendResponse({ok:false,error:e?.message||String(e)})}
     })();
     return true;
