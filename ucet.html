@@ -69,7 +69,13 @@ function saveSession(d){
 async function authFetch(path,body,token){
   const r=await fetch(AUTH_URL+path,{method:'POST',headers:{'content-type':'application/json','apikey':KEY,...(token?{authorization:'Bearer '+token}:{})},body:body===undefined?undefined:JSON.stringify(body)});
   const raw=await r.text();let d={};try{d=raw?JSON.parse(raw):{}}catch{d={message:raw}}
-  if(!r.ok)throw new Error(d?.msg||d?.message||d?.error_description||d?.error||'Prihlásenie zlyhalo.');
+  if(!r.ok){
+  const code=d?.error_code||d?.code||'';
+  if(code==='invalid_credentials' || /invalid login credentials/i.test(d?.msg||d?.message||d?.error_description||d?.error||'')){
+    throw new Error('Nesprávny email alebo heslo.');
+  }
+  throw new Error(d?.msg||d?.message||d?.error_description||d?.error||'Prihlásenie zlyhalo.');
+}
   return d;
 }
 async function validSession(){
