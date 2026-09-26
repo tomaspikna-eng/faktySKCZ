@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="sk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DETEKTOR — Účet</title>
+<meta name="robots" content="noindex,nofollow">
+<style>
+:root{--blue:#1f5fae;--blue2:#0f4f96;--navy:#17324f;--text:#1d2a36;--muted:#667788;--line:#cfd8e3;--soft:#f4f7fa;--green:#237a4b;--red:#b42a38}
+*{box-sizing:border-box}body{margin:0;background:#e9eef3;color:var(--text);font:14px/1.55 Verdana,Arial,sans-serif}.page{width:min(880px,100%);margin:0 auto;min-height:100vh;background:#fff;border-left:1px solid #c7d0da;border-right:1px solid #c7d0da}.topline{height:6px;background:var(--blue)}header{padding:22px 28px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:20px;align-items:end}.brand{font:700 28px/1 Georgia,"Times New Roman",serif;color:var(--navy);text-decoration:none}.brand span{color:var(--blue)}header a{color:var(--blue)}main{padding:28px}.panel{border:1px solid var(--line);padding:20px;margin-bottom:18px;background:#fff}.panel h1,.panel h2{font-family:Georgia,"Times New Roman",serif;color:var(--navy);margin:0 0 12px}.muted{color:var(--muted);font-size:12px}.form{display:grid;gap:10px;max-width:440px}.form input{padding:11px 12px;border:1px solid var(--line);font:inherit}.actions{display:flex;gap:8px;flex-wrap:wrap}.button{border:1px solid var(--blue2);background:var(--blue);color:#fff;padding:9px 14px;font-weight:700;cursor:pointer}.button.secondary{background:#fff;color:var(--blue)}.button.danger{border-color:#b85b64;color:#a12735;background:#fff}.message{margin-top:10px;font-size:12px;color:var(--muted)}.hidden{display:none!important}.wallet{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;background:var(--soft);border:1px solid var(--line);padding:16px}.wallet strong{font:700 30px Georgia,"Times New Roman",serif;color:var(--navy)}.packages{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.pack{border:1px solid var(--line);padding:14px;background:#fbfdff}.pack b{display:block;color:var(--navy);font-size:16px}.pack span{display:block;color:var(--muted);font-size:11px;margin:5px 0 10px}.pack button{width:100%}.pack button:disabled{opacity:.55;cursor:not-allowed}footer{padding:18px 28px;border-top:1px solid var(--line);background:#edf3f8;font-size:11px;color:#6f7d8a}@media(max-width:680px){header{align-items:flex-start;flex-direction:column}.packages{grid-template-columns:1fr}main{padding:18px}}
+</style>
+</head>
+<body>
+<div class="page"><div class="topline"></div>
+<header><div><a class="brand" href="index.html">DETEK<span>TOR</span></a><div class="muted">Účet a detektory</div></div><a href="index.html">Späť na web</a></header>
+<main>
+<section class="panel" id="authPanel">
+<h1>Účet DETEKTOR</h1>
+<div id="loggedOut">
+<p class="muted">Jeden účet používaš na webe aj v rozšírení. Zakúpené detektory sú viazané na účet, nie na konkrétny počítač.</p>
+<div class="form">
+<input id="email" type="email" autocomplete="email" placeholder="Email">
+<input id="password" type="password" autocomplete="current-password" placeholder="Heslo">
+<div class="actions"><button class="button" id="loginBtn">Prihlásiť</button><button class="button secondary" id="signupBtn">Vytvoriť účet</button></div>
+</div>
+</div>
+<div id="loggedIn" class="hidden">
+<p>Prihlásený ako <strong id="accountEmail"></strong></p>
+<button class="button danger" id="logoutBtn">Odhlásiť</button>
+</div>
+<div class="message" id="message"></div>
+</section>
+
+<section class="panel">
+<h2>Moje detektory</h2>
+<div class="wallet"><div><b>Dostupný zostatok</b><div class="muted" id="billingMode">TEST režim</div></div><strong id="balance">—</strong></div>
+</section>
+
+<section class="panel" id="kupit">
+<h2>Kúp detektory</h2>
+<p class="muted">Platobnú bránu ešte pripájame. Balíky sú pripravené, nákup zapneme po kalibrácii reálnych AI nákladov.</p>
+<div class="packages">
+<div class="pack"><b>180 detektorov</b><span>pracovne približne 3 hodiny LIVE</span><button class="button" disabled>1,99 €</button></div>
+<div class="pack"><b>600 detektorov</b><span>pracovne približne 10 hodín LIVE</span><button class="button" disabled>4,99 €</button></div>
+<div class="pack"><b>1 500 detektorov</b><span>pracovne približne 25 hodín LIVE</span><button class="button" disabled>9,99 €</button></div>
+</div>
+</section>
+</main>
+<footer>© 2026 DETEKTOR · účet, zostatok a nákupy</footer>
+</div>
+<script>
+const SUPABASE_URL='https://mexrrchqiehzvrefftym.supabase.co';
+const KEY='sb_publishable_NZCEN4vfkbyxQrzCa8YR8Q_i4ZQCH2T';
+const FUNCTION_URL=SUPABASE_URL+'/functions/v1/process-audio';
+const AUTH_URL=SUPABASE_URL+'/auth/v1';
+const $=id=>document.getElementById(id);
+
+function installId(){
+  let id=localStorage.getItem('detektor_web_install_id');
+  if(!id){id='web:'+crypto.randomUUID();localStorage.setItem('detektor_web_install_id',id)}
+  return id;
+}
+function session(){try{return JSON.parse(localStorage.getItem('detektor_auth_session')||'null')}catch{return null}}
+function saveSession(d){
+  if(!d?.access_token||!d?.refresh_token)return null;
+  const s={accessToken:d.access_token,refreshToken:d.refresh_token,expiresAt:Date.now()+Number(d.expires_in||3600)*1000,user:d.user||null};
+  localStorage.setItem('detektor_auth_session',JSON.stringify(s));return s;
+}
+async function authFetch(path,body,token){
+  const r=await fetch(AUTH_URL+path,{method:'POST',headers:{'content-type':'application/json','apikey':KEY,...(token?{authorization:'Bearer '+token}:{})},body:body===undefined?undefined:JSON.stringify(body)});
+  const raw=await r.text();let d={};try{d=raw?JSON.parse(raw):{}}catch{d={message:raw}}
+  if(!r.ok)throw new Error(d?.msg||d?.message||d?.error_description||d?.error||'Prihlásenie zlyhalo.');
+  return d;
+}
+async function validSession(){
+  let s=session();if(!s?.accessToken)return null;
+  if(Number(s.expiresAt||0)>Date.now()+60000)return s;
+  try{s=saveSession(await authFetch('/token?grant_type=refresh_token',{refresh_token:s.refreshToken}));return s}catch{localStorage.removeItem('detektor_auth_session');return null}
+}
+async function backend(action,s){
+  const r=await fetch(FUNCTION_URL,{method:'POST',headers:{'content-type':'application/json','apikey':KEY,'authorization':'Bearer '+KEY},body:JSON.stringify({action,clientInstallId:installId(),accessToken:s?.accessToken||null})});
+  const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d?.userMessage||d?.error||'Backend zlyhal.');return d;
+}
+function renderAccount(account,credits){
+  $('loggedOut').classList.toggle('hidden',!!account);
+  $('loggedIn').classList.toggle('hidden',!account);
+  $('accountEmail').textContent=account?.email||'';
+  const n=Number(credits?.availableCredits??credits?.balanceCredits);
+  $('balance').textContent=Number.isFinite(n)?n.toLocaleString('sk-SK',{maximumFractionDigits:2})+' det.':'—';
+  $('billingMode').textContent=credits?.billingEnforced?'Aktívne účtovanie':'TEST režim · detektory sa zatiaľ neodpočítavajú';
+}
+async function refresh(){
+  const s=await validSession();
+  if(!s){renderAccount(null,null);return}
+  const d=await backend('credit_status',s);
+  renderAccount(d?.account||{id:s.user?.id,email:s.user?.email},d?.credits||null);
+}
+$('loginBtn').onclick=async()=>{try{$('message').textContent='Prihlasujem…';const d=await authFetch('/token?grant_type=password',{email:$('email').value.trim().toLowerCase(),password:$('password').value});const s=saveSession(d);await backend('bind_account',s);$('password').value='';$('message').textContent='Prihlásenie úspešné.';await refresh()}catch(e){$('message').textContent=e.message}};
+$('signupBtn').onclick=async()=>{try{const email=$('email').value.trim().toLowerCase(),password=$('password').value;if(password.length<6)throw new Error('Heslo musí mať aspoň 6 znakov.');$('message').textContent='Vytváram účet…';const d=await authFetch('/signup',{email,password,data:{product:'detektor'}});if(d?.access_token){const s=saveSession(d);await backend('bind_account',s);$('message').textContent='Účet vytvorený.';await refresh()}else{$('message').textContent='Účet je vytvorený. Potvrď email a potom sa prihlás.'}}catch(e){$('message').textContent=e.message}};
+$('logoutBtn').onclick=async()=>{const s=await validSession();if(s?.accessToken)try{await authFetch('/logout',{scope:'local'},s.accessToken)}catch{}localStorage.removeItem('detektor_auth_session');$('message').textContent='Odhlásený.';renderAccount(null,null)};
+refresh();
+</script>
+</body></html>
