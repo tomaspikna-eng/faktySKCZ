@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>DETEKTOR — Prihlásenie</title>
-<link rel="icon" href="assets/detektor-logo.png" type="image/png">
+<link rel="icon" href="assets/detektor-logo.png?v=3" type="image/png">
 <meta name="robots" content="noindex,nofollow">
 <style>
 :root{--blue:#1f5fae;--blue2:#0f4f96;--navy:#17324f;--text:#1d2a36;--muted:#667788;--line:#cfd8e3;--soft:#f4f7fa;--red:#b42a38}
@@ -13,7 +13,7 @@
 </head>
 <body>
 <div class="page"><div class="topline"></div>
-<header><div><a class="brand" href="index.html"><img src="assets/detektor-logo.png" alt="">DETEK<span>TOR</span></a><div class="muted">Prihlásenie do účtu</div></div><a href="index.html">Späť na web</a></header>
+<header><div><a class="brand" href="index.html"><img src="assets/detektor-logo.png?v=3" alt="">DETEK<span>TOR</span></a><div class="muted">Prihlásenie do účtu</div></div><a href="index.html">Späť na web</a></header>
 <main>
 <section class="panel">
 <h1>Prihlásenie</h1>
@@ -23,11 +23,11 @@
 <input id="password" type="password" autocomplete="current-password" placeholder="Heslo">
 <div class="actions">
 <button class="button" id="loginBtn" type="button">Prihlásiť</button>
-<button class="button secondary" id="signupBtn" type="button">Vytvoriť účet</button>
+<a class="button secondary" href="registracia.html" style="text-decoration:none">Vytvoriť účet</a>
 </div>
 </div>
 <div class="message" id="message"></div>
-<div class="links"><a href="ucet.html">Účet a detektory</a><a href="index.html#download">Stiahnuť rozšírenie</a></div>
+<div class="links"><a href="registracia.html">Registrácia</a><a href="ucet.html">Účet a detektory</a><a href="index.html#download">Stiahnuť rozšírenie</a></div>
 </section>
 </main>
 <footer>© 2026 DETEKTOR</footer>
@@ -49,7 +49,6 @@ async function authFetch(path,body){const r=await fetch(AUTH_URL+path,{method:'P
 }return d}
 async function bind(s){const r=await fetch(FUNCTION_URL,{method:'POST',headers:{'content-type':'application/json','apikey':KEY,'authorization':'Bearer '+KEY},body:JSON.stringify({action:'bind_account',clientInstallId:installId(),accessToken:s.accessToken})});if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d?.userMessage||d?.error||'Účet sa nepodarilo prepojiť.')}return r.json().catch(()=>({}))}
 $('loginBtn').onclick=async()=>{try{$('message').textContent='Prihlasujem…';const d=await authFetch('/token?grant_type=password',{email:$('email').value.trim().toLowerCase(),password:$('password').value});const s=saveSession(d);await bind(s);location.href='ucet.html'}catch(e){$('message').textContent=e.message}};
-$('signupBtn').onclick=async()=>{try{const email=$('email').value.trim().toLowerCase(),password=$('password').value;if(password.length<6)throw new Error('Heslo musí mať aspoň 6 znakov.');$('message').textContent='Vytváram účet…';const d=await authFetch('/signup',{email,password,data:{product:'detektor'}});if(d?.access_token){const s=saveSession(d);await bind(s);location.href='ucet.html'}else{$('message').textContent='Účet je vytvorený. Potvrď email a potom sa prihlás.'}}catch(e){$('message').textContent=e.message}};
 try{const s=JSON.parse(localStorage.getItem('detektor_auth_session')||'null');if(s?.accessToken&&Number(s.expiresAt||0)>Date.now())location.href='ucet.html'}catch{}
 </script>
 </body>
