@@ -1,4 +1,4 @@
-# DETEKTOR Chrome Extension v0.7.4
+# DETEKTOR Chrome Extension v0.7.5
 
 MVP prerobené z popup rozhrania na natívny Chrome Side Panel.
 
@@ -42,3 +42,5 @@ MVP prerobené z popup rozhrania na natívny Chrome Side Panel.
 - OBS/Streamlabs Browser Source URL sú presunuté úplne naspodok sidebaru
 
 - schválené logo DETEKTOR: modré D v čiernom kruhovom ráme na bielom pozadí
+
+- opravené centrovanie loga a orezávanie spodnej časti v hlavičke webu a sidebaru
