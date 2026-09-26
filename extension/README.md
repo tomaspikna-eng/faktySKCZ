@@ -1,4 +1,4 @@
-# DETEKTOR Chrome Extension v0.7.1
+# DETEKTOR Chrome Extension v0.7.4
 
 MVP prerobené z popup rozhrania na natívny Chrome Side Panel.
 
@@ -40,3 +40,5 @@ MVP prerobené z popup rozhrania na natívny Chrome Side Panel.
 - Aktéri relácie sú v kompaktnom rolovateľnom paneli
 - LIVE štatistiky aktérov majú väčšie karty a dominantnejšie percentuálne rozdelenie verdictov
 - OBS/Streamlabs Browser Source URL sú presunuté úplne naspodok sidebaru
+
+- schválené logo DETEKTOR: modré D v čiernom kruhovom ráme na bielom pozadí
