@@ -48,6 +48,7 @@ const FUNCTION_URL=SUPABASE_URL+'/functions/v1/process-audio';
 const TERMS_VERSION='2026-09-26';
 const PRIVACY_VERSION='2026-09-26';
 const COOKIES_VERSION='2026-09-26';
+const EMAIL_CONFIRM_REDIRECT='https://detektor.live/login.html?confirmed=1';
 const $=id=>document.getElementById(id);
 function installId(){let id=localStorage.getItem('detektor_web_install_id');if(!id){id='web:'+crypto.randomUUID();localStorage.setItem('detektor_web_install_id',id)}return id}
 function saveSession(d){if(!d?.access_token||!d?.refresh_token)return null;const s={accessToken:d.access_token,refreshToken:d.refresh_token,expiresAt:Date.now()+Number(d.expires_in||3600)*1000,user:d.user||null};localStorage.setItem('detektor_auth_session',JSON.stringify(s));return s}
@@ -64,7 +65,7 @@ $('registerBtn').onclick=async()=>{
     if(!$('legal').checked)throw new Error('Na vytvorenie účtu je potrebné prijať Podmienky a vziať na vedomie Ochranu súkromia.');
     $('registerBtn').disabled=true;msg('Vytváram účet…');
     const acceptedAt=new Date().toISOString();
-    const r=await fetch(AUTH_URL+'/signup',{method:'POST',headers:{'content-type':'application/json','apikey':KEY},body:JSON.stringify({
+    const r=await fetch(AUTH_URL+'/signup?redirect_to='+encodeURIComponent(EMAIL_CONFIRM_REDIRECT),{method:'POST',headers:{'content-type':'application/json','apikey':KEY},body:JSON.stringify({
       email,password,
       data:{
         product:'detektor',
