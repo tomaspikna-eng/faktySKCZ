@@ -20,7 +20,7 @@ const dict = {
     actorsNote:'Percentá zobrazujú iba rozdelenie fact-checkovaných tvrdení v tejto relácii. Nejde o hodnotenie osoby.',
     checkedClaims:'Fact-checkované tvrdenia', actorWaiting:'Čakám na priradené výroky účastníkov…',
     participant:'Účastník', moderator:'Moderátor', captureVoice:'Zachytiť hlas', capturing:'Nahrávam 3 s…', voiceReady:'Hlas uložený',
-    credits:'Detektor kredity', billingTest:'TEST režim · kredity sa zatiaľ neodpočítavajú', billingLive:'Kredity sa odpočítavajú podľa používania'
+    credits:'Detektory', billingTest:'TEST režim · kredity sa zatiaľ neodpočítavajú', billingLive:'Kredity sa odpočítavajú podľa používania'
   },
   cz: {
     summary:'Přehled', facts:'Tvrzení', disputed:'Sporné', patterns:'Vzorce', actors:'Aktéři', captured:'Zachycená tvrzení',
@@ -39,7 +39,7 @@ const dict = {
     actorsNote:'Procenta zobrazují pouze rozdělení fact-checkovaných tvrzení v této relaci. Nejde o hodnocení osoby.',
     checkedClaims:'Fact-checkovaná tvrzení', actorWaiting:'Čekám na přiřazené výroky účastníků…',
     participant:'Účastník', moderator:'Moderátor', captureVoice:'Zachytit hlas', capturing:'Nahrávám 3 s…', voiceReady:'Hlas uložen',
-    credits:'Detektor kredity', billingTest:'TEST režim · kredity se zatím neodečítají', billingLive:'Kredity se odečítají podle používání'
+    credits:'Detektory', billingTest:'TEST režim · kredity se zatím neodečítají', billingLive:'Kredity se odečítají podle používání'
   }
 };
 const t = k => dict[lang][k] || k;
