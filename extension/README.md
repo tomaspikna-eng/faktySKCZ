@@ -1,4 +1,4 @@
-# DETEKTOR Chrome Extension v0.6.5
+# DETEKTOR Chrome Extension v0.7.1
 
 MVP prerobené z popup rozhrania na natívny Chrome Side Panel.
 
@@ -35,3 +35,8 @@ MVP prerobené z popup rozhrania na natívny Chrome Side Panel.
 3. Klikni Load unpacked.
 4. Vyber tento priečinok.
 5. Klikni na ikonu DETEKTOR a otvorí sa pravý side panel.
+
+- streamer-first sidebar: po otvorení je predvolená záložka Aktéri
+- Aktéri relácie sú v kompaktnom rolovateľnom paneli
+- LIVE štatistiky aktérov majú väčšie karty a dominantnejšie percentuálne rozdelenie verdictov
+- OBS/Streamlabs Browser Source URL sú presunuté úplne naspodok sidebaru
