@@ -31,6 +31,25 @@
       <strong id="creditBalance">—</strong>
       <small id="creditMode">Načítavam…</small>
     </div>
+    <div class="account-box" id="accountBox">
+      <div class="account-head">
+        <strong>Účet DETEKTOR</strong>
+        <span id="accountStatus">Neprihlásený</span>
+      </div>
+      <div id="authLoggedOut">
+        <input id="authEmail" type="email" autocomplete="email" placeholder="Email">
+        <input id="authPassword" type="password" autocomplete="current-password" placeholder="Heslo">
+        <div class="auth-actions">
+          <button id="signInBtn" type="button">Prihlásiť</button>
+          <button id="signUpBtn" type="button">Vytvoriť účet</button>
+        </div>
+      </div>
+      <div id="authLoggedIn" class="hidden">
+        <span id="accountEmail"></span>
+        <button id="signOutBtn" type="button">Odhlásiť</button>
+      </div>
+      <div id="authMessage" class="auth-message"></div>
+    </div>
     <div id="errorBox" class="error hidden"></div>
     <div id="streamBox" class="stream-box hidden">
       <div class="stream-title" data-i18n="streamTitle">Stream Browser Source</div>
