@@ -148,7 +148,7 @@ async function loadActorStats(capture){
 
 
 async function render(){
-  const state=await chrome.storage.local.get(['sessionClaims','captureState','processingState','uiLang','speakerProfiles','detectedParticipants','creditState']);
+  const state=await chrome.storage.local.get(['sessionClaims','captureState','processingState','uiLang','speakerProfiles','detectedParticipants','creditState','authState']);
   const claims=Array.isArray(state.sessionClaims)?state.sessionClaims:[];
   const capture=state.captureState||{};
   const proc=state.processingState||{};
@@ -161,9 +161,15 @@ async function render(){
 
   const credit=state.creditState||{};
   const available=Number(credit.availableCredits??credit.balanceCredits);
-  $('creditBalance').textContent=Number.isFinite(available)?available.toLocaleString(lang==='cz'?'cs-CZ':'sk-SK',{maximumFractionDigits:2})+' cr':'—';
+  $('creditBalance').textContent=Number.isFinite(available)?available.toLocaleString(lang==='cz'?'cs-CZ':'sk-SK',{maximumFractionDigits:2})+' det.':'—';
   $('creditMode').textContent=credit.billingEnforced===true?t('billingLive'):t('billingTest');
   $('creditBar').classList.toggle('billing-on',credit.billingEnforced===true);
+
+  const account=state.authState||null;
+  $('authLoggedOut').classList.toggle('hidden',!!account?.id);
+  $('authLoggedIn').classList.toggle('hidden',!account?.id);
+  $('accountStatus').textContent=account?.id?(lang==='cz'?'Přihlášen':'Prihlásený'):(lang==='cz'?'Nepřihlášen':'Neprihlásený');
+  $('accountEmail').textContent=account?.email||'';
 
   const overlay=capture.streamOverlay||null;
   if(overlay?.factcheckUrl&&overlay?.scoreboardUrl){
@@ -253,6 +259,52 @@ $('startBtn').addEventListener('click',async()=>{
 $('stopBtn').addEventListener('click',async()=>{await chrome.runtime.sendMessage({type:'STOP_CAPTURE'});await render()});
 $('clearBtn').addEventListener('click',async()=>{await chrome.runtime.sendMessage({type:'CLEAR_SESSION'});await render()});
 $('langBtn').addEventListener('click',async()=>{lang=lang==='sk'?'cz':'sk';await chrome.storage.local.set({uiLang:lang});await render()});
+
+async function refreshAccountAndCredits(){
+  try{await chrome.runtime.sendMessage({type:'GET_AUTH_STATE'});}catch{}
+  try{await chrome.runtime.sendMessage({type:'GET_AUTH_STATE'});}catch{}
+  try{await chrome.runtime.sendMessage({type:'GET_CREDIT_STATUS'});}catch{}
+  await render();
+}
+
+$('signInBtn').addEventListener('click',async()=>{
+  const email=$('authEmail').value.trim();
+  const password=$('authPassword').value;
+  $('authMessage').textContent='Prihlasujem…';
+  const r=await chrome.runtime.sendMessage({type:'DETEKTOR_SIGN_IN',email,password});
+  if(!r?.ok){
+    $('authMessage').textContent=r?.error||'Prihlásenie zlyhalo.';
+    return;
+  }
+  $('authPassword').value='';
+  $('authMessage').textContent='Prihlásenie úspešné.';
+  await refreshAccountAndCredits();
+});
+
+$('signUpBtn').addEventListener('click',async()=>{
+  const email=$('authEmail').value.trim();
+  const password=$('authPassword').value;
+  $('authMessage').textContent='Vytváram účet…';
+  const r=await chrome.runtime.sendMessage({type:'DETEKTOR_SIGN_UP',email,password});
+  if(!r?.ok){
+    $('authMessage').textContent=r?.error||'Registrácia zlyhala.';
+    return;
+  }
+  $('authPassword').value='';
+  if(r?.confirmationRequired){
+    $('authMessage').textContent='Účet je vytvorený. Potvrď email a potom sa prihlás.';
+  }else{
+    $('authMessage').textContent='Účet je vytvorený a prihlásený.';
+    await refreshAccountAndCredits();
+  }
+});
+
+$('signOutBtn').addEventListener('click',async()=>{
+  $('authMessage').textContent='Odhlasujem…';
+  const r=await chrome.runtime.sendMessage({type:'DETEKTOR_SIGN_OUT'});
+  $('authMessage').textContent=r?.ok?'Odhlásený.':(r?.error||'Odhlásenie zlyhalo.');
+  await refreshAccountAndCredits();
+});
 async function copyOverlay(inputId,buttonId){
   const input=$(inputId),button=$(buttonId);
   if(!input?.value)return;
