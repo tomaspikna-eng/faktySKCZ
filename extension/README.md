@@ -1,4 +1,4 @@
-# DETEKTOR Chrome Extension v0.7.6
+# DETEKTOR Chrome Extension v0.7.7
 
 MVP prerobené z popup rozhrania na natívny Chrome Side Panel.
 
@@ -46,3 +46,5 @@ MVP prerobené z popup rozhrania na natívny Chrome Side Panel.
 - opravené centrovanie loga a orezávanie spodnej časti v hlavičke webu a sidebaru
 
 - bezpečný vnútorný okraj loga, aby sa kruh neorezával pri škálovaní
+
+- manuálne spustenie fact-checkingu: klik na ikonu iba otvorí sidebar, analýza začne až tlačidlom Spustiť overovanie
