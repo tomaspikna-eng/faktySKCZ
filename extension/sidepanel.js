@@ -19,7 +19,8 @@ const dict = {
     checkedClaims:'Fact-checkované tvrdenia', actorWaiting:'Čakám na priradené výroky účastníkov…',
     actorsNote:'Percentá zobrazujú iba rozdelenie fact-checkovaných tvrdení v tejto relácii. Nejde o hodnotenie osoby.',
     checkedClaims:'Fact-checkované tvrdenia', actorWaiting:'Čakám na priradené výroky účastníkov…',
-    participant:'Účastník', moderator:'Moderátor', captureVoice:'Zachytiť hlas', capturing:'Nahrávam 3 s…', voiceReady:'Hlas uložený'
+    participant:'Účastník', moderator:'Moderátor', captureVoice:'Zachytiť hlas', capturing:'Nahrávam 3 s…', voiceReady:'Hlas uložený',
+    credits:'Detektor kredity', billingTest:'TEST režim · kredity sa zatiaľ neodpočítavajú', billingLive:'Kredity sa odpočítavajú podľa používania'
   },
   cz: {
     summary:'Přehled', facts:'Tvrzení', disputed:'Sporné', patterns:'Vzorce', actors:'Aktéři', captured:'Zachycená tvrzení',
@@ -37,7 +38,8 @@ const dict = {
     checkedClaims:'Fact-checkovaná tvrzení', actorWaiting:'Čekám na přiřazené výroky účastníků…',
     actorsNote:'Procenta zobrazují pouze rozdělení fact-checkovaných tvrzení v této relaci. Nejde o hodnocení osoby.',
     checkedClaims:'Fact-checkovaná tvrzení', actorWaiting:'Čekám na přiřazené výroky účastníků…',
-    participant:'Účastník', moderator:'Moderátor', captureVoice:'Zachytit hlas', capturing:'Nahrávám 3 s…', voiceReady:'Hlas uložen'
+    participant:'Účastník', moderator:'Moderátor', captureVoice:'Zachytit hlas', capturing:'Nahrávám 3 s…', voiceReady:'Hlas uložen',
+    credits:'Detektor kredity', billingTest:'TEST režim · kredity se zatím neodečítají', billingLive:'Kredity se odečítají podle používání'
   }
 };
 const t = k => dict[lang][k] || k;
@@ -146,7 +148,7 @@ async function loadActorStats(capture){
 
 
 async function render(){
-  const state=await chrome.storage.local.get(['sessionClaims','captureState','processingState','uiLang','speakerProfiles','detectedParticipants']);
+  const state=await chrome.storage.local.get(['sessionClaims','captureState','processingState','uiLang','speakerProfiles','detectedParticipants','creditState']);
   const claims=Array.isArray(state.sessionClaims)?state.sessionClaims:[];
   const capture=state.captureState||{};
   const proc=state.processingState||{};
@@ -156,6 +158,12 @@ async function render(){
   document.querySelectorAll('[data-i18n]').forEach(el=>el.textContent=t(el.dataset.i18n));
   $('startBtn').textContent=t('start'); $('stopBtn').textContent=t('stop'); $('clearBtn').textContent=t('clear');
   $('copyFactOverlay').textContent=t('copy'); $('copyScoreOverlay').textContent=t('copy');
+
+  const credit=state.creditState||{};
+  const available=Number(credit.availableCredits??credit.balanceCredits);
+  $('creditBalance').textContent=Number.isFinite(available)?available.toLocaleString(lang==='cz'?'cs-CZ':'sk-SK',{maximumFractionDigits:2})+' cr':'—';
+  $('creditMode').textContent=credit.billingEnforced===true?t('billingLive'):t('billingTest');
+  $('creditBar').classList.toggle('billing-on',credit.billingEnforced===true);
 
   const overlay=capture.streamOverlay||null;
   if(overlay?.factcheckUrl&&overlay?.scoreboardUrl){
@@ -303,5 +311,6 @@ chrome.storage.onChanged.addListener((changes)=>{
   if(requestedSideTab && ['summary','facts','disputed','patterns','actors'].includes(requestedSideTab)){
     setTab(requestedSideTab);
   }
+  try{await chrome.runtime.sendMessage({type:'GET_CREDIT_STATUS'});}catch{}
   await render();
 })();
