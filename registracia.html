@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="sk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DETEKTOR — Registrácia</title>
+<link rel="icon" href="assets/detektor-logo.png?v=3" type="image/png">
+<meta name="robots" content="index,follow">
+<style>
+:root{--blue:#1f5fae;--blue2:#0f4f96;--navy:#17324f;--text:#1d2a36;--muted:#667788;--line:#cfd8e3;--soft:#f4f7fa;--red:#b42a38;--green:#237a4b}
+*{box-sizing:border-box}body{margin:0;background:#e9eef3;color:var(--text);font:14px/1.55 Verdana,Arial,sans-serif}.page{width:min(760px,100%);margin:0 auto;min-height:100vh;background:#fff;border-left:1px solid #c7d0da;border-right:1px solid #c7d0da}.topline{height:6px;background:var(--blue)}header{padding:22px 28px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:20px;align-items:center;overflow:visible}.brand{font:700 28px/1.12 Georgia,"Times New Roman",serif;color:var(--navy);text-decoration:none;display:inline-flex;align-items:center;gap:8px;min-height:40px;overflow:visible;white-space:nowrap}.brand img{width:36px;height:36px;display:block;object-fit:contain;flex:0 0 36px}.brand span{color:var(--blue)}header a{color:var(--blue)}main{padding:34px 28px}.panel{border:1px solid var(--line);padding:24px;background:#fff}.panel h1{font:700 30px Georgia,"Times New Roman",serif;color:var(--navy);margin:0 0 8px}.muted{color:var(--muted);font-size:12px}.form{display:grid;gap:11px;margin-top:20px}.form label.field{font-size:11px;font-weight:700;color:#45586b}.form input[type=email],.form input[type=password]{width:100%;margin-top:5px;padding:11px 12px;border:1px solid var(--line);font:inherit}.check{display:flex;gap:9px;align-items:flex-start;font-size:11px;color:#536475}.check input{margin-top:3px}.check a{color:var(--blue)}.button{border:1px solid var(--blue2);background:var(--blue);color:#fff;padding:11px 16px;font-weight:700;cursor:pointer}.button:disabled{opacity:.55;cursor:not-allowed}.message{margin-top:12px;font-size:12px;min-height:22px;color:var(--muted)}.message.ok{color:var(--green)}.message.err{color:var(--red)}.login{margin-top:18px;padding-top:15px;border-top:1px solid #e4e9ef;font-size:12px}.login a{color:var(--blue)}footer{padding:18px 28px;border-top:1px solid var(--line);background:#edf3f8;font-size:11px;color:#6f7d8a;margin-top:28px}footer a{color:#536c86;margin-right:12px}@media(max-width:620px){header{align-items:flex-start;flex-direction:column}main{padding:22px 18px}.panel{padding:18px}}
+</style>
+</head>
+<body>
+<div class="page"><div class="topline"></div>
+<header><div><a class="brand" href="index.html"><img src="assets/detektor-logo.png?v=3" alt="">DETEK<span>TOR</span></a><div class="muted">Vytvorenie účtu</div></div><a href="login.html">Prihlásenie</a></header>
+<main>
+<section class="panel">
+<h1>Registrácia</h1>
+<p class="muted">Jeden účet funguje na webe aj v rozšírení DETEKTOR.</p>
+<div class="form">
+<label class="field">Email
+<input id="email" type="email" autocomplete="email" placeholder="meno@example.sk" required>
+</label>
+<label class="field">Heslo
+<input id="password" type="password" autocomplete="new-password" placeholder="Minimálne 8 znakov" required>
+</label>
+<label class="field">Potvrdenie hesla
+<input id="password2" type="password" autocomplete="new-password" placeholder="Zopakuj heslo" required>
+</label>
+<label class="check">
+<input id="legal" type="checkbox">
+<span>Súhlasím s <a href="podmienky.html" target="_blank" rel="noopener">Podmienkami používania</a> a beriem na vedomie <a href="ochrana-sukromia.html" target="_blank" rel="noopener">Ochranu súkromia</a>. Informácie o lokálnom ukladaní údajov sú v <a href="cookies.html" target="_blank" rel="noopener">Cookies a lokálnom úložisku</a>.</span>
+</label>
+<button class="button" id="registerBtn" type="button">Vytvoriť účet</button>
+</div>
+<div class="message" id="message"></div>
+<div class="login">Už máš účet? <a href="login.html">Prihlásiť sa</a></div>
+</section>
+</main>
+<footer><a href="podmienky.html">Podmienky</a><a href="ochrana-sukromia.html">Ochrana súkromia</a><a href="cookies.html">Cookies</a><br><br>© 2026 DETEKTOR</footer>
+</div>
+<script>
+const SUPABASE_URL='https://mexrrchqiehzvrefftym.supabase.co';
+const KEY='sb_publishable_NZCEN4vfkbyxQrzCa8YR8Q_i4ZQCH2T';
+const AUTH_URL=SUPABASE_URL+'/auth/v1';
+const FUNCTION_URL=SUPABASE_URL+'/functions/v1/process-audio';
+const TERMS_VERSION='2026-09-26';
+const PRIVACY_VERSION='2026-09-26';
+const COOKIES_VERSION='2026-09-26';
+const $=id=>document.getElementById(id);
+function installId(){let id=localStorage.getItem('detektor_web_install_id');if(!id){id='web:'+crypto.randomUUID();localStorage.setItem('detektor_web_install_id',id)}return id}
+function saveSession(d){if(!d?.access_token||!d?.refresh_token)return null;const s={accessToken:d.access_token,refreshToken:d.refresh_token,expiresAt:Date.now()+Number(d.expires_in||3600)*1000,user:d.user||null};localStorage.setItem('detektor_auth_session',JSON.stringify(s));return s}
+async function bind(s){const r=await fetch(FUNCTION_URL,{method:'POST',headers:{'content-type':'application/json','apikey':KEY,'authorization':'Bearer '+KEY},body:JSON.stringify({action:'bind_account',clientInstallId:installId(),accessToken:s.accessToken})});if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d?.userMessage||d?.error||'Účet sa nepodarilo prepojiť.')}return r.json().catch(()=>({}))}
+function msg(text,type=''){const el=$('message');el.textContent=text;el.className='message '+type}
+$('registerBtn').onclick=async()=>{
+  try{
+    const email=$('email').value.trim().toLowerCase();
+    const password=$('password').value;
+    const password2=$('password2').value;
+    if(!email)throw new Error('Zadaj email.');
+    if(password.length<8)throw new Error('Heslo musí mať aspoň 8 znakov.');
+    if(password!==password2)throw new Error('Heslá sa nezhodujú.');
+    if(!$('legal').checked)throw new Error('Na vytvorenie účtu je potrebné prijať Podmienky a vziať na vedomie Ochranu súkromia.');
+    $('registerBtn').disabled=true;msg('Vytváram účet…');
+    const acceptedAt=new Date().toISOString();
+    const r=await fetch(AUTH_URL+'/signup',{method:'POST',headers:{'content-type':'application/json','apikey':KEY},body:JSON.stringify({
+      email,password,
+      data:{
+        product:'detektor',
+        terms_accepted:true,
+        terms_version:TERMS_VERSION,
+        privacy_version:PRIVACY_VERSION,
+        cookies_version:COOKIES_VERSION,
+        accepted_at:acceptedAt
+      }
+    })});
+    const raw=await r.text();let d={};try{d=raw?JSON.parse(raw):{}}catch{d={message:raw}}
+    if(!r.ok)throw new Error(d?.msg||d?.message||d?.error_description||d?.error||'Registrácia zlyhala.');
+    if(d?.access_token){
+      const s=saveSession(d);await bind(s);location.href='ucet.html';
+    }else{
+      msg('Účet je vytvorený. Potvrď registračný email a potom sa prihlás.','ok');
+    }
+  }catch(e){msg(e.message,'err')}
+  finally{$('registerBtn').disabled=false}
+};
+</script>
+</body>
+</html>
