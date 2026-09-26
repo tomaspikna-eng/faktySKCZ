@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "DETEKTOR",
-  "version": "0.7.3",
+  "version": "0.7.4",
   "description": "DETEKTOR — Live CZ/SK fact-checking v bočnom paneli.",
   "minimum_chrome_version": "116",
   "permissions": [
@@ -16,8 +16,8 @@
   "action": {
     "default_title": "DETEKTOR",
     "default_icon": {
-      "16": "icons/icon16.png",
-      "32": "icons/icon32.png"
+      "16": "icons/detektor.png",
+      "32": "icons/detektor.png"
     }
   },
   "side_panel": {
@@ -49,9 +49,9 @@
   },
   "short_name": "DETEKTOR",
   "icons": {
-    "16": "icons/icon16.png",
-    "32": "icons/icon32.png",
-    "48": "icons/icon48.png",
-    "128": "icons/icon128.png"
+    "16": "icons/detektor.png",
+    "32": "icons/detektor.png",
+    "48": "icons/detektor.png",
+    "128": "icons/detektor.png"
   }
 }
