@@ -1,5 +1,5 @@
 const $ = id => document.getElementById(id);
-let activeTab = 'summary';
+let activeTab = 'actors';
 let lang = 'sk';
 
 const dict = {
@@ -9,7 +9,7 @@ const dict = {
     disputedNote:'Zavádzajúce, nepravdivé a neoverené tvrdenia.', patternsNote:'Tu sa zobrazia výroky, ktoré sa počas relácie opakujú.',
     noCaptions:'bez titulkov', start:'Obnoviť overovanie', stop:'Zastaviť', clear:'Vymazať', ready:'Pripravené.',
     listening:'Počúvam audio aktuálneho tabu…', transcribing:'Prepisujem a analyzujem posledný úsek…', stopped:'Overovanie je zastavené.',
-    noVideo:'Klikni na ikonu faktySKCZ pri otvorenom videu', emptyTitle:'Zatiaľ bez tvrdení', emptyBody:'Po spustení sa sem budú pridávať overiteľné výroky.',
+    noVideo:'Klikni na ikonu DETEKTOR pri otvorenom videu', emptyTitle:'Zatiaľ bez tvrdení', emptyBody:'Po spustení sa sem budú pridávať overiteľné výroky.',
     noDisputed:'Zatiaľ bez sporných tvrdení', noPatterns:'Zatiaľ bez opakovaných tvrdení', sources:'Zdroje', noSources:'Zdroj nie je v tomto výsledku dostupný.',
     confidence:'istota', repeats:'× opakované', timeFallback:'od spustenia',
     streamTitle:'Stream Browser Source', factOverlay:'LIVE fact-check', scoreOverlay:'Aktéri – priebežné počty verdictov',
@@ -28,7 +28,7 @@ const dict = {
     disputedNote:'Zavádějící, nepravdivá a neověřená tvrzení.', patternsNote:'Zde se zobrazí výroky, které se během pořadu opakují.',
     noCaptions:'bez titulků', start:'Obnovit ověřování', stop:'Zastavit', clear:'Vymazat', ready:'Připraveno.',
     listening:'Poslouchám audio aktuálního panelu…', transcribing:'Přepisuji a analyzuji poslední úsek…', stopped:'Ověřování je zastaveno.',
-    noVideo:'Klikni na ikonu faktySKCZ při otevřeném videu', emptyTitle:'Zatím bez tvrzení', emptyBody:'Po spuštění se sem budou přidávat ověřitelná tvrzení.',
+    noVideo:'Klikni na ikonu DETEKTOR při otevřeném videu', emptyTitle:'Zatím bez tvrzení', emptyBody:'Po spuštění se sem budou přidávat ověřitelná tvrzení.',
     noDisputed:'Zatím bez sporných tvrzení', noPatterns:'Zatím bez opakovaných tvrzení', sources:'Zdroje', noSources:'Zdroj není v tomto výsledku dostupný.',
     confidence:'jistota', repeats:'× opakováno', timeFallback:'od spuštění',
     streamTitle:'Stream Browser Source', factOverlay:'LIVE fact-check', scoreOverlay:'Aktéři – průběžné počty verdiktů',
@@ -252,7 +252,7 @@ $('startBtn').addEventListener('click',async()=>{
   $('startBtn').disabled=true;
   const r=await chrome.runtime.sendMessage({type:'PREPARE_RESTART'});
   $('startBtn').disabled=false;
-  $('errorBox').textContent=r?.message||r?.error||'Otvor video a klikni na ikonu faktySKCZ v lište Chrome.';
+  $('errorBox').textContent=r?.message||r?.error||'Otvor video a klikni na ikonu DETEKTOR v lište Chrome.';
   $('errorBox').classList.remove('hidden');
   await render();
 });
@@ -362,6 +362,8 @@ chrome.storage.onChanged.addListener((changes)=>{
   const {requestedSideTab=null}=await chrome.storage.local.get('requestedSideTab');
   if(requestedSideTab && ['summary','facts','disputed','patterns','actors'].includes(requestedSideTab)){
     setTab(requestedSideTab);
+  }else{
+    setTab('actors');
   }
   try{await chrome.runtime.sendMessage({type:'GET_CREDIT_STATUS'});}catch{}
   await render();
