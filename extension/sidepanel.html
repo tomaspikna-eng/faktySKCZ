@@ -48,8 +48,18 @@
         </div>
       </div>
       <div id="authLoggedIn" class="hidden">
-        <span id="accountEmail"></span>
-        <button id="signOutBtn" type="button">Odhlásiť</button>
+        <div class="account-user-row">
+          <span id="accountDisplayName">Bez zobrazovaného mena</span>
+          <button id="signOutBtn" type="button">Odhlásiť</button>
+        </div>
+        <div class="display-name-settings">
+          <label for="profileDisplayName">Zobrazované meno</label>
+          <div class="display-name-row">
+            <input id="profileDisplayName" type="text" maxlength="40" placeholder="napr. TomasLive">
+            <button id="saveDisplayNameBtn" type="button">Uložiť</button>
+          </div>
+          <small>Email ostáva iba na prihlásenie. V sidebare a streamoch sa nezobrazuje.</small>
+        </div>
       </div>
       <div id="authMessage" class="auth-message"></div>
     </div>
