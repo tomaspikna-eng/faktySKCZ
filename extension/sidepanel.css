@@ -30,4 +30,4 @@ footer{padding:6px 10px}
   .speaker-box{max-height:170px}
   .speaker-row{grid-template-columns:1fr 1fr}
 }
-.brand-lockup{display:flex;align-items:center;gap:8px;min-height:34px;overflow:visible}.brand-mark{width:32px;height:32px;display:block;object-fit:contain;object-position:center;flex:0 0 32px;margin:0;padding:0;border-radius:0;overflow:visible}
+.brand-lockup{display:flex;align-items:center;gap:8px;min-height:34px;overflow:visible}.brand-mark{width:34px;height:34px;display:block;object-fit:contain;object-position:center;flex:0 0 34px;margin:0;padding:0;border-radius:0;overflow:visible}
