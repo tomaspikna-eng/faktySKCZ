@@ -30,7 +30,10 @@ Priečinok: `/extension`
 - SK/CZ lokalizácia
 - Chrome / Edge ako prvé podporované prehliadače
 - Firefox a Opera následne
-- jednorazová aktivácia + kredit podľa spotreby
+- jednorazová aktivácia + vlastná peňaženka Detektor kreditov
+- používateľ nepotrebuje vlastný OpenAI API kľúč
+- kreditný backend: wallet + ledger + rezervácia/settlement spotreby
+- kreditné účtovanie je zatiaľ v TEST režime; tvrdé blokovanie spotreby je vypnuté do kalibrácie nákladov
 - TV / newsroom vrstva neskôr
 
 ## Architektúra
@@ -43,3 +46,7 @@ Priečinok: `/extension`
 ## Dôležité
 
 Nevytvárať ďalší Supabase projekt pre DETEKTOR. Existujúci projekt `FactCTP` je technický backend produktu DETEKTOR.
+
+## Kreditný model
+
+DETEKTOR používa vlastnú obchodnú jednotku `Detektor credit`. Zákazník nekupuje ani nedostáva OpenAI kredity alebo API kľúč. Rozšírenie má stabilné `client_install_id`, backend eviduje peňaženku, kreditné transakcie a surovú spotrebu. Produkčný billing sa zapne až po kalibrácii reálnej ceny jednej minúty a napojení checkoutu.
