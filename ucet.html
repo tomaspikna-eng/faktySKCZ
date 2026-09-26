@@ -47,9 +47,9 @@
 <h2>Kúp detektory</h2>
 <p class="muted"><strong>TEST PREDAJA:</strong> žiadne peniaze sa nestrhnú. Kliknutie iba nasimuluje úspešnú platbu a pripíše detektory do tvojho účtu.</p>
 <div class="packages">
-<div class="pack"><b>Mini · 180 detektorov</b><span>približne 3 hodiny LIVE</span><button class="button buy-test" data-product="topup_3h" disabled>TEST KÚPIŤ · 4,99 €</button></div>
-<div class="pack"><b>Standard · 600 detektorov</b><span>približne 10 hodín LIVE</span><button class="button buy-test" data-product="topup_10h" disabled>TEST KÚPIŤ · 12,99 €</button></div>
-<div class="pack"><b>Plus · 1 500 detektorov</b><span>približne 25 hodín LIVE</span><button class="button buy-test" data-product="topup_25h" disabled>TEST KÚPIŤ · 24,99 €</button></div>
+<div class="pack"><b>Mini · 180 detektorov</b><span>približne 3 hodiny LIVE</span><button class="button buy-test" data-product="topup_3h" disabled>TEST KÚPIŤ · 4,99 €</button><button class="button buy-live hidden" data-product="topup_3h">KÚPIŤ CEZ CARDPAY · 4,99 €</button></div>
+<div class="pack"><b>Standard · 600 detektorov</b><span>približne 10 hodín LIVE</span><button class="button buy-test" data-product="topup_10h" disabled>TEST KÚPIŤ · 12,99 €</button><button class="button buy-live hidden" data-product="topup_10h">KÚPIŤ CEZ CARDPAY · 12,99 €</button></div>
+<div class="pack"><b>Plus · 1 500 detektorov</b><span>približne 25 hodín LIVE</span><button class="button buy-test" data-product="topup_25h" disabled>TEST KÚPIŤ · 24,99 €</button><button class="button buy-live hidden" data-product="topup_25h">KÚPIŤ CEZ CARDPAY · 24,99 €</button></div>
 </div>
 <p class="muted" style="margin-top:12px"><a href="cennik.html">Detailný cenník: Skúška, Streamer, LIVE Event, Newsroom a Enterprise →</a></p>
 </section>
@@ -60,6 +60,7 @@
 const SUPABASE_URL='https://mexrrchqiehzvrefftym.supabase.co';
 const KEY='sb_publishable_NZCEN4vfkbyxQrzCa8YR8Q_i4ZQCH2T';
 const FUNCTION_URL=SUPABASE_URL+'/functions/v1/process-audio';
+const CARDPAY_URL=SUPABASE_URL+'/functions/v1/cardpay-checkout';
 const AUTH_URL=SUPABASE_URL+'/auth/v1';
 const $=id=>document.getElementById(id);
 
@@ -95,6 +96,44 @@ async function backend(action,s,extra={}){
   const r=await fetch(FUNCTION_URL,{method:'POST',headers:{'content-type':'application/json','apikey':KEY,'authorization':'Bearer '+KEY},body:JSON.stringify({action,clientInstallId:installId(),accessToken:s?.accessToken||null,...extra})});
   const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d?.userMessage||d?.error||'Backend zlyhal.');return d;
 }
+let cardPayConfigured=false;
+function renderPaymentButtons(account){
+  document.querySelectorAll('.buy-test').forEach(btn=>{
+    btn.classList.toggle('hidden',cardPayConfigured);
+    btn.disabled=!account;
+  });
+  document.querySelectorAll('.buy-live').forEach(btn=>{
+    btn.classList.toggle('hidden',!cardPayConfigured);
+    btn.disabled=!account;
+  });
+}
+async function cardPayRequest(s,body){
+  const r=await fetch(CARDPAY_URL,{
+    method:'POST',
+    headers:{
+      'content-type':'application/json',
+      'apikey':KEY,
+      'authorization':'Bearer '+s.accessToken
+    },
+    body:JSON.stringify(body)
+  });
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(d?.userMessage||d?.error||'CardPay zlyhal.');
+  return d;
+}
+function submitCardPay(data){
+  const form=document.createElement('form');
+  form.method=data?.method||'POST';
+  form.action=data?.gatewayUrl||'';
+  form.style.display='none';
+  Object.entries(data?.fields||{}).forEach(([name,value])=>{
+    const input=document.createElement('input');
+    input.type='hidden';input.name=name;input.value=String(value??'');
+    form.appendChild(input);
+  });
+  document.body.appendChild(form);
+  form.submit();
+}
 function renderAccount(account,credits){
   $('loggedOut').classList.toggle('hidden',!!account);
   $('loggedIn').classList.toggle('hidden',!account);
@@ -104,13 +143,19 @@ function renderAccount(account,credits){
   const n=Number(credits?.availableCredits??credits?.balanceCredits);
   $('balance').textContent=Number.isFinite(n)?n.toLocaleString('sk-SK',{maximumFractionDigits:2})+' det.':'—';
   $('billingMode').textContent=credits?.billingEnforced?'Aktívne účtovanie':'TEST režim · detektory sa zatiaľ neodpočítavajú';
-  document.querySelectorAll('.buy-test').forEach(btn=>btn.disabled=!account);
+  renderPaymentButtons(account);
 }
 async function refresh(){
   const s=await validSession();
-  if(!s){renderAccount(null,null);return}
+  if(!s){cardPayConfigured=false;renderAccount(null,null);return}
   const d=await backend('credit_status',s);
-  renderAccount(d?.account||{id:s.user?.id,email:s.user?.email},d?.credits||null);
+  try{
+    const pay=await cardPayRequest(s,{action:'status'});
+    cardPayConfigured=pay?.configured===true;
+  }catch{
+    cardPayConfigured=false;
+  }
+  renderAccount(d?.account||{id:s.user?.id,displayName:null},d?.credits||null);
 }
 $('loginBtn').onclick=async()=>{try{$('message').textContent='Prihlasujem…';const d=await authFetch('/token?grant_type=password',{email:$('email').value.trim().toLowerCase(),password:$('password').value});const s=saveSession(d);await backend('bind_account',s);$('password').value='';$('message').textContent='Prihlásenie úspešné.';await refresh()}catch(e){$('message').textContent=e.message}};
 $('saveDisplayNameBtn').onclick=async()=>{
@@ -127,6 +172,20 @@ $('saveDisplayNameBtn').onclick=async()=>{
 };
 
 $('logoutBtn').onclick=async()=>{const s=await validSession();if(s?.accessToken)try{await authFetch('/logout',{scope:'local'},s.accessToken)}catch{}localStorage.removeItem('detektor_auth_session');$('message').textContent='Odhlásený.';renderAccount(null,null)};
+
+document.querySelectorAll('.buy-live').forEach(btn=>btn.onclick=async()=>{
+  const s=await validSession();
+  if(!s){$('message').textContent='Najprv sa prihlás.';return}
+  const old=btn.textContent;
+  btn.disabled=true;btn.textContent='OTVÁRAM CARDPAY…';
+  try{
+    const d=await cardPayRequest(s,{action:'create',productCode:btn.dataset.product});
+    submitCardPay(d);
+  }catch(e){
+    $('message').textContent=e.message||'CardPay sa nepodarilo spustiť.';
+    btn.disabled=false;btn.textContent=old;
+  }
+});
 
 document.querySelectorAll('.buy-test').forEach(btn=>btn.onclick=async()=>{
   const s=await validSession();
