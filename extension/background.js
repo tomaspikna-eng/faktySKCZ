@@ -4,6 +4,32 @@ const OVERLAY_API_URL = 'https://mexrrchqiehzvrefftym.supabase.co/functions/v1/o
 const PUBLISHABLE_KEY = 'sb_publishable_NZCEN4vfkbyxQrzCa8YR8Q_i4ZQCH2T';
 const BACKEND_TIMEOUT_MS = 120000;
 
+async function getClientInstallId(){
+  const state=await chrome.storage.local.get('clientInstallId');
+  let id=String(state.clientInstallId||'').trim();
+  if(!id){
+    id=crypto.randomUUID();
+    await chrome.storage.local.set({clientInstallId:id});
+  }
+  return id;
+}
+
+async function fetchCreditStatus(){
+  const clientInstallId=await getClientInstallId();
+  const res=await fetch(FUNCTION_URL,{
+    method:'POST',
+    headers:{
+      'content-type':'application/json',
+      'apikey':PUBLISHABLE_KEY,
+      'authorization':'Bearer '+PUBLISHABLE_KEY
+    },
+    body:JSON.stringify({action:'credit_status',clientInstallId})
+  });
+  const data=await res.json().catch(()=>({}));
+  if(res.ok&&data?.credits)await chrome.storage.local.set({creditState:data.credits});
+  return data?.credits||null;
+}
+
 async function appendDebugEvent(stage, details = {}) {
   try {
     const { debugEvents = [] } = await chrome.storage.local.get('debugEvents');
@@ -27,8 +53,10 @@ async function processAudioRequest(payload, tabId) {
 
     const { rollingTranscript = '', captureState = {}, speakerProfiles = [] } =
       await chrome.storage.local.get(['rollingTranscript','captureState','speakerProfiles']);
+    const clientInstallId=await getClientInstallId();
     const requestPayload = {
       ...(payload || {}),
+      clientInstallId,
       contextBefore: String(rollingTranscript || '').slice(-2500),
       sessionId: payload?.sessionId || captureState.sessionId || null,
       sourceUrl: captureState.url || '',
@@ -71,6 +99,7 @@ async function processAudioRequest(payload, tabId) {
       const combined = (String(rollingTranscript || '') + '\n' + String(data.transcript)).trim();
       await chrome.storage.local.set({ rollingTranscript: combined.slice(-2500) });
     }
+    if(data?.credits) await chrome.storage.local.set({creditState:data.credits});
 
     return data;
   } catch (e) {
@@ -355,6 +384,18 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           errorCode: e?.errorCode || null,
           fatal: e?.fatal === true
         });
+      }
+    })();
+    return true;
+  }
+
+  if (msg?.type === 'GET_CREDIT_STATUS') {
+    (async()=>{
+      try{
+        const credits=await fetchCreditStatus();
+        sendResponse({ok:true,credits});
+      }catch(e){
+        sendResponse({ok:false,error:e?.message||String(e)});
       }
     })();
     return true;
