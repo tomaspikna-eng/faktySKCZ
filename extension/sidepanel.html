@@ -119,8 +119,21 @@
     </div>
     <div class="stream-note" data-i18n="streamNote">V OBS/Streamlabs vlož URL ako Browser Source. Moderátor sa v prehľade aktérov nezobrazuje.</div>
   </div>
-  <footer><span>FactCTP / Supabase EU</span><span>•</span><span data-i18n="noCaptions">bez titulkov</span></footer>
+  <footer><span>DETEKTOR.live</span><span>•</span><span data-i18n="noCaptions">bez titulkov</span><span>•</span><button id="privacyInfoBtn" class="footer-link" type="button">Súkromie</button></footer>
 </div>
+
+<dialog id="privacyDisclosure" class="privacy-dialog">
+  <form method="dialog" class="privacy-card">
+    <div class="privacy-kicker">DETEKTOR.live</div>
+    <h2 id="privacyTitle">Pred prvým LIVE overovaním</h2>
+    <p id="privacyBody">DETEKTOR po spustení zachytáva zvuk aktuálnej karty a odošle ho na zabezpečené serverové spracovanie za účelom prepisu a fact-checkingu.</p>
+    <p id="privacyDetail" class="privacy-detail">Spracúvajú sa aj údaje potrebné na priebeh relácie, napríklad názov a URL aktívnej stránky, prepis, tvrdenia a technické metadáta. Údaje sa používajú iba na poskytovanie služby DETEKTOR.live.</p>
+    <div class="privacy-actions">
+      <button id="privacyCancelBtn" class="ghost" value="cancel" type="submit">Zrušiť</button>
+      <button id="privacyAcceptBtn" class="primary" value="default" type="button">Súhlasím a spustiť</button>
+    </div>
+  </form>
+</dialog>
 <script src="sidepanel.js"></script>
 </body>
 </html>
