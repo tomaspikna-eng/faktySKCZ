@@ -20,7 +20,11 @@ const dict = {
     actorsNote:'Percentá zobrazujú iba rozdelenie fact-checkovaných tvrdení v tejto relácii. Nejde o hodnotenie osoby.',
     checkedClaims:'Fact-checkované tvrdenia', actorWaiting:'Čakám na priradené výroky účastníkov…',
     participant:'Účastník', moderator:'Moderátor', captureVoice:'Zachytiť hlas', capturing:'Nahrávam 3 s…', voiceReady:'Hlas uložený',
-    credits:'Detektory', billingTest:'TEST režim · kredity sa zatiaľ neodpočítavajú', billingLive:'Kredity sa odpočítavajú podľa používania'
+    credits:'Detektory', billingTest:'TEST režim · kredity sa zatiaľ neodpočítavajú', billingLive:'Kredity sa odpočítavajú podľa používania',
+    privacyTitle:'Pred prvým LIVE overovaním',
+    privacyBody:'DETEKTOR po spustení zachytáva zvuk aktuálnej karty a odošle ho na zabezpečené serverové spracovanie za účelom prepisu a fact-checkingu.',
+    privacyDetail:'Spracúvajú sa aj údaje potrebné na priebeh relácie, napríklad názov a URL aktívnej stránky, prepis, tvrdenia a technické metadáta. Údaje sa používajú iba na poskytovanie služby DETEKTOR.live.',
+    privacyAccept:'Súhlasím a spustiť', privacyCancel:'Zrušiť', privacyInfo:'Súkromie'
   },
   cz: {
     summary:'Přehled', facts:'Tvrzení', disputed:'Sporné', patterns:'Vzorce', actors:'Aktéři', captured:'Zachycená tvrzení',
@@ -39,7 +43,11 @@ const dict = {
     actorsNote:'Procenta zobrazují pouze rozdělení fact-checkovaných tvrzení v této relaci. Nejde o hodnocení osoby.',
     checkedClaims:'Fact-checkovaná tvrzení', actorWaiting:'Čekám na přiřazené výroky účastníků…',
     participant:'Účastník', moderator:'Moderátor', captureVoice:'Zachytit hlas', capturing:'Nahrávám 3 s…', voiceReady:'Hlas uložen',
-    credits:'Detektory', billingTest:'TEST režim · kredity se zatím neodečítají', billingLive:'Kredity se odečítají podle používání'
+    credits:'Detektory', billingTest:'TEST režim · kredity se zatím neodečítají', billingLive:'Kredity se odečítají podle používání',
+    privacyTitle:'Před prvním LIVE ověřováním',
+    privacyBody:'DETEKTOR po spuštění zachytává zvuk aktuální karty a odešle ho ke zabezpečenému serverovému zpracování za účelem přepisu a fact-checkingu.',
+    privacyDetail:'Zpracovávají se také údaje potřebné pro průběh relace, například název a URL aktivní stránky, přepis, tvrzení a technická metadata. Údaje se používají pouze pro poskytování služby DETEKTOR.live.',
+    privacyAccept:'Souhlasím a spustit', privacyCancel:'Zrušit', privacyInfo:'Soukromí'
   }
 };
 const t = k => dict[lang][k] || k;
@@ -158,6 +166,12 @@ async function render(){
   document.querySelectorAll('[data-i18n]').forEach(el=>el.textContent=t(el.dataset.i18n));
   $('startBtn').textContent=t('start'); $('stopBtn').textContent=t('stop'); $('clearBtn').textContent=t('clear');
   $('copyFactOverlay').textContent=t('copy'); $('copyScoreOverlay').textContent=t('copy');
+  $('privacyTitle').textContent=t('privacyTitle');
+  $('privacyBody').textContent=t('privacyBody');
+  $('privacyDetail').textContent=t('privacyDetail');
+  $('privacyAcceptBtn').textContent=t('privacyAccept');
+  $('privacyCancelBtn').textContent=t('privacyCancel');
+  $('privacyInfoBtn').textContent=t('privacyInfo');
 
   const credit=state.creditState||{};
   const available=Number(credit.availableCredits??credit.balanceCredits);
@@ -250,7 +264,10 @@ function setTab(name){
 }
 document.querySelectorAll('.tab').forEach(x=>x.addEventListener('click',()=>setTab(x.dataset.tab)));
 
-$('startBtn').addEventListener('click',async()=>{
+const PRIVACY_DISCLOSURE_VERSION='2026-09-27-v1';
+let startAfterPrivacy=false;
+
+async function startLiveCapture(){
   $('startBtn').disabled=true;
   $('statusLine').textContent=lang==='cz'?'Spouštím ověřování…':'Spúšťam overovanie…';
   const r=await chrome.runtime.sendMessage({type:'START_CAPTURE'});
@@ -262,7 +279,30 @@ $('startBtn').addEventListener('click',async()=>{
     $('errorBox').classList.add('hidden');
   }
   await render();
+}
+
+$('startBtn').addEventListener('click',async()=>{
+  const saved=await chrome.storage.local.get('privacyDisclosureAcceptedVersion');
+  if(saved?.privacyDisclosureAcceptedVersion!==PRIVACY_DISCLOSURE_VERSION){
+    startAfterPrivacy=true;
+    $('privacyDisclosure').showModal();
+    return;
+  }
+  await startLiveCapture();
 });
+
+$('privacyAcceptBtn').addEventListener('click',async()=>{
+  await chrome.storage.local.set({privacyDisclosureAcceptedVersion:PRIVACY_DISCLOSURE_VERSION});
+  $('privacyDisclosure').close();
+  if(startAfterPrivacy){
+    startAfterPrivacy=false;
+    await startLiveCapture();
+  }
+});
+
+$('privacyCancelBtn').addEventListener('click',()=>{startAfterPrivacy=false});
+$('privacyDisclosure').addEventListener('cancel',()=>{startAfterPrivacy=false});
+$('privacyInfoBtn').addEventListener('click',()=>{startAfterPrivacy=false;$('privacyDisclosure').showModal()});
 $('stopBtn').addEventListener('click',async()=>{await chrome.runtime.sendMessage({type:'STOP_CAPTURE'});await render()});
 $('clearBtn').addEventListener('click',async()=>{await chrome.runtime.sendMessage({type:'CLEAR_SESSION'});await render()});
 $('langBtn').addEventListener('click',async()=>{lang=lang==='sk'?'cz':'sk';await chrome.storage.local.set({uiLang:lang});await render()});
