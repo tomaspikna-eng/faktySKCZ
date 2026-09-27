@@ -1,4 +1,4 @@
-# DETEKTOR Chrome Extension v0.7.8
+# DETEKTOR Chrome Extension v0.8.0
 
 MVP prerobené z popup rozhrania na natívny Chrome Side Panel.
 
@@ -50,3 +50,12 @@ MVP prerobené z popup rozhrania na natívny Chrome Side Panel.
 - manuálne spustenie fact-checkingu: klik na ikonu iba otvorí sidebar, analýza začne až tlačidlom Spustiť overovanie
 
 - nahradený poškodený PNG asset loga novým čistým vycentrovaným logom bez orezania
+
+
+## Chrome Web Store candidate 0.8.0
+
+- first-run privacy disclosure before the first LIVE audio capture
+- affirmative consent stored locally in Chrome
+- disclosure can be reopened from the sidebar footer
+- public identity uses display name instead of account email
+- Manifest V3; backend access is scoped to the DETEKTOR Supabase origin
