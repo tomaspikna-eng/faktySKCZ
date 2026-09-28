@@ -1,0 +1,32 @@
+name: Build DETEKTOR Chrome Store ZIP
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/build-detektor-store-zip.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate manifest
+        run: python -m json.tool extension/manifest.json > /dev/null
+
+      - name: Build clean Chrome Web Store package
+        run: |
+          cd extension
+          zip -9 -r ../DETEKTOR-0.8.0-Chrome-Web-Store.zip             manifest.json             background.js             offscreen.html             offscreen.js             sidepanel.html             sidepanel.css             sidepanel.js             icons
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: DETEKTOR-0.8.0-Chrome-Web-Store
+          path: DETEKTOR-0.8.0-Chrome-Web-Store.zip
+          if-no-files-found: error
+          retention-days: 1
