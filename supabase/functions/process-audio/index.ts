@@ -124,41 +124,52 @@ function parseJsonText(raw: string) {
   return JSON.parse(x);
 }
 
-async function extractClaims(transcript: string, contextBefore: string, segments: any[], pageContext: any) {
+async function extractClaims(batchSegments: any[], pageContext: any, detectParticipants: boolean) {
   const key = Deno.env.get("OPENAI_API_KEY");
-  if (!key || !transcript) return { claims: [], participants: [], usage: null };
+  const safe = (Array.isArray(batchSegments) ? batchSegments : [])
+    .slice(-4)
+    .map((x:any)=>({
+      sequenceNo:Number.isFinite(Number(x?.sequenceNo)) ? Number(x.sequenceNo) : 0,
+      text:String(x?.text || "").trim(),
+      speakerText:String(x?.speakerText || x?.text || "").trim()
+    }))
+    .filter((x:any)=>x.text);
+  if (!key || !safe.length) return { claims: [], participants: [], usage: null };
 
-  const diarizedText = Array.isArray(segments) && segments.length
-    ? segments.map((s:any)=>"[" + String(s.speaker || "unknown") + "] " + String(s.text || "")).join("\n")
-    : transcript;
+  const allowedSequences = new Set(safe.map((x:any)=>x.sequenceNo));
+  const latestSequence = safe[safe.length-1]?.sequenceNo ?? 0;
+  const batchText = safe.map((x:any)=>
+    "[CHUNK " + x.sequenceNo + "]\n" + (x.speakerText || x.text)
+  ).join("\n---\n").slice(-7000);
 
-  const pageMeta = [
-    pageContext?.title,
-    pageContext?.description,
-    pageContext?.ogTitle,
-    pageContext?.ogDescription,
-    pageContext?.heading
-  ].filter(Boolean).map(String).join("\n").slice(0,2500);
+  const pageMeta = detectParticipants
+    ? [
+        pageContext?.title,
+        pageContext?.description,
+        pageContext?.ogTitle,
+        pageContext?.ogDescription,
+        pageContext?.heading
+      ].filter(Boolean).map(String).join("\n").slice(0,900)
+    : "";
+
+  const participantInstruction = detectParticipants
+    ? "Identify debate participants only when explicitly introduced in this batch or explicitly named in metadata. A merely mentioned person is not a participant. For direct address, return a participant only when a full name and the current speaker label are both unambiguous. "
+    : "Do not extract participants in this batch; return an empty participants array. ";
 
   const prompt =
-    "You extract fact-checkable claims and explicitly identified participants from Czech/Slovak political or news speech.\n" +
-    "PAGE / VIDEO METADATA (use only to identify explicitly named participants; do not invent people):\n---\n" +
-    (pageMeta || "(none)") +
-    "\n---\nPREVIOUS CONTEXT (for resolving references only; do not extract old claims):\n---\n" +
-    (contextBefore || "(none)") +
-    "\n---\nCURRENT SEGMENT WITH OPTIONAL SPEAKER LABELS:\n---\n" + diarizedText + "\n---\n" +
-    "Return JSON only: {\"claims\":[{\"claim\":\"self-contained claim\",\"speakerKey\":\"speaker label or null\"}],\"participants\":[{\"displayName\":\"explicitly identified name\",\"speakerKey\":\"speaker label or null\",\"role\":\"participant|moderator\",\"source\":\"metadata|intro|direct_address\",\"confidence\":0}]}. " +
-    "Extract only claims actually asserted in CURRENT SEGMENT that are concrete and externally verifiable. " +
-    "If speaker labels are present in square brackets, preserve the exact label of the person who asserted the claim. " +
-    "Extract a participant only when the person is clearly taking part in this debate and their name is explicit in PAGE/VIDEO METADATA, explicitly introduced in CURRENT SEGMENT (for example 'vítam ...', 'mojím hosťom je ...', 'diskutujú ...'), or directly addressed in-studio by name with clear conversational evidence that they are present. " +
-    "A person who is merely mentioned as a subject of discussion is NOT a participant. Never turn references to absent politicians, officials or other people into participants. " +
-    "If diarization labels are present, set participant speakerKey to the exact label only when the current audio unambiguously links that named participant to that voice; otherwise use null. " +
-    "Use role moderator only when explicitly clear; otherwise use participant. Do not infer identity from voice, political affiliation, office, topic, or general knowledge. " +
-    "Do not repeat the same participant. Confidence is confidence that the name/role was explicitly identified, not a political score. " +
-    "Never infer a person's real identity from wording or political context. If attribution is ambiguous, speakerKey must be null. " +
-    "Rewrite pronouns or vague references into a self-contained claim only when the referent is explicit in PREVIOUS CONTEXT. " +
-    "Discard incomplete, subjective, rhetorical, predictive, personal-experience-only, or contextless statements. " +
-    "Prefer numbers, dates, laws, public records, historical events and measurable statements. Maximum 5 claims. Preserve Czech/Slovak.";
+    "Extract a SMALL set of high-value fact-checkable claims from Czech/Slovak political or news speech. " +
+    "This is a cost-controlled live pipeline: return at most TWO claims across the whole batch. " +
+    "Select claims by factual specificity and external verifiability, not by party, ideology, speaker, tone, or agreement. " +
+    "Prefer concrete numbers, dates, laws, official records, public appointments, budgets, measurable events and checkable historical statements. " +
+    "Discard rhetoric, opinion, predictions, vague accusations, repetition and low-information claims. " +
+    participantInstruction +
+    "Never infer a real person's identity from voice, political affiliation, office, topic, or general knowledge. " +
+    "Speaker labels such as [3:A] are LOCAL to that chunk. Preserve the exact speaker label only for a claim spoken under that label. " +
+    "Return sourceSequenceNo matching the [CHUNK N] that contains the claim. " +
+    "Confidence for participant identity must be 0-100. Priority for claims must be 0-100 and reflect only factual specificity/verifiability. " +
+    "Return JSON only: {\"claims\":[{\"claim\":\"self-contained claim\",\"sourceSequenceNo\":0,\"speakerKey\":\"speaker label or null\",\"priority\":0}],\"participants\":[{\"displayName\":\"full name\",\"speakerKey\":\"speaker label or null\",\"role\":\"participant|moderator\",\"source\":\"metadata|intro|direct_address\",\"confidence\":0}]}.\n" +
+    (pageMeta ? "PAGE/VIDEO METADATA:\n" + pageMeta + "\n---\n" : "") +
+    "NEW UNANALYSED BATCH:\n" + batchText;
 
   const r = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
@@ -166,31 +177,53 @@ async function extractClaims(transcript: string, contextBefore: string, segments
     body: JSON.stringify({
       model: Deno.env.get("CLAIM_MODEL") || "gpt-5.6-terra",
       input: prompt,
-      max_output_tokens: 700
+      max_output_tokens: 450
     })
   });
   if (!r.ok) throw new Error("Claim extraction " + r.status + ": " + (await r.text()).slice(0,400));
   const d = await r.json();
+
   try {
     const p = parseJsonText(outputText(d));
-    const claims = Array.isArray(p.claims)
-      ? p.claims.slice(0,5).map((x:any)=>{
-          if (typeof x === "string") return { claim:x.trim(), speakerKey:null };
-          return {
-            claim:String(x?.claim || "").trim(),
-            speakerKey:x?.speakerKey == null ? null : String(x.speakerKey).trim() || null
-          };
-        }).filter((x:any)=>x.claim.length >= 15)
-      : [];
-    const participants = Array.isArray(p.participants)
-      ? p.participants.slice(0,8).map((x:any)=>({
-          displayName:String(x?.displayName || "").trim(),
+    const claims = (Array.isArray(p.claims) ? p.claims : [])
+      .map((x:any)=>{
+        const rawSeq=Number(x?.sourceSequenceNo);
+        return {
+          claim:String(x?.claim || "").trim(),
+          sourceSequenceNo:allowedSequences.has(rawSeq) ? rawSeq : latestSequence,
           speakerKey:x?.speakerKey == null ? null : String(x.speakerKey).trim() || null,
-          role:x?.role === "moderator" ? "moderator" : "participant",
-          source:["metadata","intro","direct_address"].includes(String(x?.source)) ? String(x.source) : "intro",
-          confidence:Number.isFinite(Number(x?.confidence)) ? Math.max(0,Math.min(100,Math.round(Number(x.confidence)))) : null
-        })).filter((x:any)=>x.displayName.length >= 3)
+          priority:Number.isFinite(Number(x?.priority)) ? Math.max(0,Math.min(100,Math.round(Number(x.priority)))) : 50
+        };
+      })
+      .filter((x:any)=>x.claim.length >= 15)
+      .sort((a:any,b:any)=>b.priority-a.priority)
+      .slice(0,2);
+
+    const participants = detectParticipants
+      ? (Array.isArray(p.participants) ? p.participants : []).slice(0,6).map((x:any)=>{
+          const raw=Number(x?.confidence);
+          const confidence=Number.isFinite(raw)
+            ? Math.max(0,Math.min(100,Math.round(raw <= 1 ? raw*100 : raw)))
+            : null;
+          const source=["metadata","intro","direct_address"].includes(String(x?.source)) ? String(x.source) : "intro";
+          const speakerKey=x?.speakerKey == null ? null : String(x.speakerKey).trim() || null;
+          return {
+            displayName:String(x?.displayName || "").trim(),
+            speakerKey,
+            role:x?.role === "moderator" ? "moderator" : "participant",
+            source,
+            confidence
+          };
+        }).filter((x:any)=>{
+          if(x.displayName.length < 5) return false;
+          if(x.confidence != null && x.confidence < 70) return false;
+          if(x.source === "direct_address"){
+            return !!x.speakerKey && x.displayName.trim().split(/\\s+/).length >= 2;
+          }
+          return x.source === "metadata" || x.source === "intro";
+        })
       : [];
+
     return { claims, participants, usage: d.usage || null };
   } catch {
     return { claims: [], participants: [], usage: d.usage || null };
@@ -284,21 +317,22 @@ function normalizeWebResult(claim: string, x: any) {
 }
 
 async function webVerifyClaims(claims: string[]) {
-  if (!claims.length) return [];
+  if (!claims.length) return { results: [], usage: null };
   const key = Deno.env.get("OPENAI_API_KEY");
-  if (!key) return claims.map((claim)=>normalizeWebResult(claim, { verdict:"unverified", confidence:null, explanation:"Chýba OpenAI API key.", sources:[] }));
+  if (!key) return {
+    results: claims.map((claim)=>normalizeWebResult(claim, { verdict:"unverified", confidence:null, explanation:"Chýba OpenAI API key.", sources:[] })),
+    usage: null
+  };
 
   const prompt =
     "You are a neutral evidence-based fact-checking engine for Czech and Slovak public-affairs statements. " +
-    "Fact-check EACH claim below using current web search. Do not rate, rank, endorse, oppose, or assess any politician/person overall. " +
-    "Judge only the specific factual proposition. Prefer primary sources: official statistics, laws, ministries, central banks, election/public records, EU institutions and original documents. " +
-    "Use established fact-checkers or major news agencies as secondary evidence. Avoid blogs/social posts unless they are the primary artifact being verified. " +
-    "If the wording is vague, context is missing, evidence conflicts, or the proposition cannot be established reliably, use unverified. " +
-    "For time-sensitive claims, use sources relevant to the stated time period. " +
-    "Confidence means confidence in evidence/relevance, NOT percent truth. " +
-    "Return JSON only with exactly this shape: " +
-    "{\"results\":[{\"index\":0,\"verdict\":\"true|mostly_true|misleading|false|unverified\",\"confidence\":0,\"explanation\":\"1-2 factual sentences\",\"sources\":[{\"title\":\"\",\"url\":\"https://...\",\"publisher\":\"\",\"date\":\"YYYY-MM-DD or null\",\"tier\":\"A|B|C|D\"}]}]}. " +
-    "Tier A=primary/official, B=established fact-check/research, C=major news agency/media, D=other web. Maximum 4 sources per claim.\n\n" +
+    "Fact-check EACH claim below using current web search. Judge only the specific factual proposition. " +
+    "Do not rate, rank, endorse, oppose, or assess any politician/person overall. " +
+    "Prefer primary/official sources, then established fact-checkers/research, then major news agencies/media. " +
+    "If evidence is insufficient, conflicting, stale for the stated period, or the claim is too vague, use unverified. " +
+    "Confidence means confidence in the evidence and source relevance, not percent truth. " +
+    "Return JSON only: {\"results\":[{\"index\":0,\"verdict\":\"true|mostly_true|misleading|false|unverified\",\"confidence\":0,\"explanation\":\"1-2 concise factual sentences\",\"sources\":[{\"title\":\"\",\"url\":\"https://...\",\"publisher\":\"\",\"date\":\"YYYY-MM-DD or null\",\"tier\":\"A|B|C|D\"}]}]}. " +
+    "Maximum 3 sources per claim.\n\n" +
     claims.map((c,i)=>i + ": " + c).join("\n");
 
   const r = await fetch("https://api.openai.com/v1/responses", {
@@ -308,41 +342,40 @@ async function webVerifyClaims(claims: string[]) {
       model: Deno.env.get("FACTCHECK_MODEL") || "gpt-5.6-terra",
       tools: [{ type: "web_search", search_context_size: "medium" }],
       input: prompt,
-      max_output_tokens: 1400
+      max_output_tokens: 900
     })
   });
   if (!r.ok) {
     const err = await r.text();
     console.error("WEB_VERIFY_ERROR", r.status, err.slice(0,400));
-    return claims.map((claim)=>normalizeWebResult(claim, {
-      verdict:"unverified",
-      confidence:null,
-      explanation:"Webové overenie momentálne zlyhalo.",
-      sources:[]
-    }));
+    return {
+      results:claims.map((claim)=>normalizeWebResult(claim, {
+        verdict:"unverified", confidence:null, explanation:"Webové overenie momentálne zlyhalo.", sources:[]
+      })),
+      usage:null
+    };
   }
   const d = await r.json();
   try {
     const p = parseJsonText(outputText(d));
     const byIndex = new Map<number,any>();
     for (const item of Array.isArray(p.results) ? p.results : []) byIndex.set(Number(item.index), item);
-    return claims.map((claim,i)=>normalizeWebResult(claim, byIndex.get(i) || {
-      verdict:"unverified",
-      confidence:null,
-      explanation:"Nenašiel sa dostatočný podklad na spoľahlivé overenie.",
-      sources:[]
-    }));
+    return {
+      results: claims.map((claim,i)=>normalizeWebResult(claim, byIndex.get(i) || {
+        verdict:"unverified", confidence:null, explanation:"Nenašiel sa dostatočný podklad na spoľahlivé overenie.", sources:[]
+      })),
+      usage:d.usage || null
+    };
   } catch (e) {
     console.error("WEB_VERIFY_PARSE_ERROR", String(e), outputText(d).slice(0,500));
-    return claims.map((claim)=>normalizeWebResult(claim, {
-      verdict:"unverified",
-      confidence:null,
-      explanation:"Výsledok webového overenia sa nepodarilo spracovať.",
-      sources:[]
-    }));
+    return {
+      results:claims.map((claim)=>normalizeWebResult(claim, {
+        verdict:"unverified", confidence:null, explanation:"Výsledok webového overenia sa nepodarilo spracovať.", sources:[]
+      })),
+      usage:d.usage || null
+    };
   }
 }
-
 
 function uniqueClaimTexts(claims: any[]) {
   const out: string[] = [];
@@ -355,9 +388,9 @@ function uniqueClaimTexts(claims: any[]) {
 }
 
 async function embedClaims(claims: string[]) {
-  if (!claims.length) return [];
+  if (!claims.length) return { embeddings: [], usage: null };
   const key = Deno.env.get("OPENAI_API_KEY");
-  if (!key) return claims.map(()=>null);
+  if (!key) return { embeddings: claims.map(()=>null), usage: null };
   const model = "text-embedding-3-small";
   const r = await fetch("https://api.openai.com/v1/embeddings", {
     method: "POST",
@@ -366,13 +399,16 @@ async function embedClaims(claims: string[]) {
   });
   if (!r.ok) {
     console.error("EMBEDDING_ERROR", r.status, (await r.text()).slice(0,300));
-    return claims.map(()=>null);
+    return { embeddings: claims.map(()=>null), usage: null };
   }
   const d = await r.json();
   const rows = Array.isArray(d.data) ? d.data : [];
   const byIndex = new Map<number, any>();
   for (const row of rows) byIndex.set(Number(row.index), row.embedding);
-  return claims.map((_,i)=>byIndex.get(i) || null);
+  return {
+    embeddings:claims.map((_,i)=>byIndex.get(i) || null),
+    usage:d.usage || null
+  };
 }
 
 async function findCachedFactcheck(claim: string, embedding: any) {
@@ -443,9 +479,13 @@ async function storeFactcheckCache(claim: string, embedding: any, item: any) {
 }
 
 async function verifyClaims(claimOccurrences: any[]) {
-  const uniqueTexts = uniqueClaimTexts(claimOccurrences);
+  const limited = (Array.isArray(claimOccurrences) ? claimOccurrences : [])
+    .sort((a:any,b:any)=>Number(b?.priority||0)-Number(a?.priority||0))
+    .slice(0,2);
+  const uniqueTexts = uniqueClaimTexts(limited).slice(0,2);
   const verifiedByText = new Map<string,any>();
-  const embeddings = await embedClaims(uniqueTexts);
+  const embedded = await embedClaims(uniqueTexts);
+  const embeddings = embedded.embeddings;
   const afterCache: { index:number, claim:string }[] = [];
   let cacheHits = 0;
 
@@ -470,16 +510,19 @@ async function verifyClaims(claimOccurrences: any[]) {
     }
   }
 
+  let webUsage:any = null;
   if (afterFactcheckDb.length) {
     const web = await webVerifyClaims(afterFactcheckDb.map(x=>x.claim));
+    webUsage = web.usage || null;
     for (let j=0;j<afterFactcheckDb.length;j++) {
       const u = afterFactcheckDb[j];
-      verifiedByText.set(u.claim, web[j]);
-      await storeFactcheckCache(u.claim, embeddings[u.index], web[j]);
+      const result = web.results[j];
+      verifiedByText.set(u.claim, result);
+      await storeFactcheckCache(u.claim, embeddings[u.index], result);
     }
   }
 
-  const results = (claimOccurrences || []).map((occ:any)=>{
+  const results = limited.map((occ:any)=>{
     const claim = String(occ?.claim || "").trim();
     let bestKey = "";
     let bestScore = -1;
@@ -488,22 +531,26 @@ async function verifyClaims(claimOccurrences: any[]) {
       if (s > bestScore) { bestScore = s; bestKey = key; }
     }
     const base = verifiedByText.get(bestKey) || normalizeWebResult(claim,{
-      verdict:"unverified",
-      confidence:null,
-      explanation:"Nenašiel sa dostatočný podklad na spoľahlivé overenie.",
-      sources:[]
+      verdict:"unverified", confidence:null,
+      explanation:"Nenašiel sa dostatočný podklad na spoľahlivé overenie.", sources:[]
     });
     return {
       ...base,
       claim,
-      speakerKey: occ?.speakerKey == null ? null : String(occ.speakerKey)
+      speakerKey: occ?.speakerKey == null ? null : String(occ.speakerKey),
+      sourceSequenceNo:Number.isFinite(Number(occ?.sourceSequenceNo)) ? Number(occ.sourceSequenceNo) : null,
+      priority:Number.isFinite(Number(occ?.priority)) ? Number(occ.priority) : null
     };
   });
 
   return {
     results,
+    usage:{
+      embedding:embedded.usage || null,
+      webVerification:webUsage
+    },
     metrics: {
-      inputClaims: claimOccurrences.length,
+      inputClaims: limited.length,
       uniqueClaims: uniqueTexts.length,
       cacheHits,
       externalChecks: uniqueTexts.length - cacheHits,
@@ -593,6 +640,21 @@ async function recordRawUsageSafe(payload: Record<string, unknown>) {
   }
 }
 
+function qualifySpeakerSegments(segments:any[], sequenceNo:number, speakerProfiles:any[]) {
+  const known = new Set((Array.isArray(speakerProfiles)?speakerProfiles:[])
+    .map((p:any)=>String(p?.speakerKey||"").trim()).filter(Boolean));
+  return (Array.isArray(segments)?segments:[]).map((s:any)=>{
+    const raw=String(s?.speaker||"").trim();
+    const qualified=raw && !known.has(raw) ? String(sequenceNo)+":"+raw : raw;
+    return {...s, speaker:qualified, speakerLabel:raw || null};
+  });
+}
+
+function compactSpeakerText(segments:any[], fallback:string) {
+  if(!Array.isArray(segments) || !segments.length) return String(fallback||"");
+  return segments.map((s:any)=>"[" + String(s?.speaker||"unknown") + "] " + String(s?.text||"")).join("\n");
+}
+
 async function archiveChunk(body: any, client: string, transcript: string, results: any[], metadata: any) {
   const sessionId = String(body.sessionId || "");
   if (!sessionId) return null;
@@ -614,7 +676,7 @@ async function archiveChunk(body: any, client: string, transcript: string, resul
 async function syncParticipants(sessionId: string, profiles: any[]) {
   if (!sessionId || !Array.isArray(profiles) || !profiles.length) return null;
   const participants = profiles.slice(0,8).map((p:any)=>({
-    speakerKey:String(p?.speakerKey || "").trim() || null,
+    speakerKey:/^p[1-4]$/.test(String(p?.speakerKey || "").trim()) ? String(p.speakerKey).trim() : null,
     displayName:String(p?.displayName || "").trim(),
     role:p?.role === "moderator" ? "moderator" : "participant",
     source:String(p?.source || (p?.speakerKey ? "known-speaker-reference" : "auto-detected")),
@@ -804,7 +866,7 @@ Deno.serve(async (req: Request) => {
       billingReservationId = reservation?.reservationId || null;
       if (!billingReservationId) throw new Error("BILLING_RESERVATION_FAILED");
     }
-    const contextBefore = String(body.contextBefore || "").slice(-2500);
+    const contextBefore = String(body.contextBefore || "").slice(-600);
     const pageContext = body.pageContext && typeof body.pageContext === "object" ? body.pageContext : {};
     if (!audioBase64) return reply({ error: "audioBase64 is required" }, 400);
 
@@ -813,14 +875,33 @@ Deno.serve(async (req: Request) => {
       await syncParticipants(String(body.sessionId), speakerProfiles);
     }
 
-    const tr = await transcribe(audioBase64, mimeType, speakerProfiles);
+    const sequenceNo = Number.isFinite(Number(body.sequenceNo)) ? Number(body.sequenceNo) : 0;
+    const trRaw = await transcribe(audioBase64, mimeType, speakerProfiles);
+    const qualifiedSegments = qualifySpeakerSegments(trRaw.segments, sequenceNo, speakerProfiles);
+    const tr = {...trRaw, segments:qualifiedSegments};
+
+    const analysisEvery = Math.max(2,Math.min(6,Number(Deno.env.get("ANALYSIS_EVERY_N_CHUNKS") || "3")));
+    const analysisPerformed = sequenceNo === 0 || sequenceNo % analysisEvery === 0;
+    const detectParticipants = analysisPerformed && sequenceNo <= analysisEvery;
+    const pendingSegments = (Array.isArray(body.pendingSegments) ? body.pendingSegments : [])
+      .slice(-(analysisEvery-1))
+      .map((x:any)=>({
+        sequenceNo:Number.isFinite(Number(x?.sequenceNo)) ? Number(x.sequenceNo) : 0,
+        text:String(x?.text || "").slice(0,2600),
+        speakerText:String(x?.speakerText || x?.text || "").slice(0,3200)
+      }))
+      .filter((x:any)=>x.text);
+
     const baseMetadata = {
       transcriptionUsage: tr.usage,
       processingMs: Date.now() - started,
       transcribeModel: tr.model,
       diarized: tr.diarized === true,
       knownSpeakerCount: speakerProfiles.length,
-      factcheckModel: Deno.env.get("FACTCHECK_MODEL") || "gpt-5.6-terra"
+      factcheckModel: Deno.env.get("FACTCHECK_MODEL") || "gpt-5.6-terra",
+      pipelineVersion:"v22-cost-control",
+      analysisEvery,
+      analysisPerformed
     };
 
     if (!tr.text) {
@@ -832,10 +913,11 @@ Deno.serve(async (req: Request) => {
           p_session_id: body.sessionId || null,
           p_seconds: usageSeconds,
           p_metadata: {
-            sequenceNo: Number(body.sequenceNo || 0),
+            sequenceNo,
             transcribeModel: tr.model || null,
             transcriptionUsage: tr.usage || null,
-            emptyTranscript: true
+            emptyTranscript: true,
+            analysisPerformed:false
           }
         });
         if (billingReservationId) {
@@ -852,31 +934,67 @@ Deno.serve(async (req: Request) => {
         }
       }
       return reply({
+        sequenceNo,
         transcript:"",
+        speakerSegments:tr.segments,
+        diarized:tr.diarized === true,
+        participants:[],
         claims:[],
+        analysisPerformed:false,
         processingMs:Date.now()-started,
         archived,
         credits:credits ? {...credits,billingEnforced:billingEnabled} : null
       });
     }
 
-    const ex = await extractClaims(tr.text, contextBefore, tr.segments, pageContext);
-    if (body.sessionId && Array.isArray(ex.participants) && ex.participants.length) {
-      await syncParticipants(String(body.sessionId), ex.participants);
-    }
-    const verified = await verifyClaims(ex.claims);
-    const results = verified.results;
+    let ex:any = {claims:[],participants:[],usage:null};
+    let verified:any = {
+      results:[],
+      usage:{embedding:null,webVerification:null},
+      metrics:{inputClaims:0,uniqueClaims:0,cacheHits:0,externalChecks:0,webChecks:0}
+    };
 
+    if (analysisPerformed) {
+      const batchSegments = [
+        ...pendingSegments,
+        {
+          sequenceNo,
+          text:tr.text,
+          speakerText:compactSpeakerText(tr.segments,tr.text)
+        }
+      ];
+      ex = await extractClaims(batchSegments, pageContext, detectParticipants);
+      if (body.sessionId && Array.isArray(ex.participants) && ex.participants.length) {
+        await syncParticipants(String(body.sessionId), ex.participants);
+      }
+      verified = await verifyClaims(ex.claims);
+    }
+
+    const results = verified.results || [];
     const metadata = {
       ...baseMetadata,
       claimExtractionUsage: ex.usage,
+      verificationUsage: verified.usage || null,
       detectedParticipants: ex.participants || [],
       costControl: verified.metrics,
+      pendingSegmentsConsumed: analysisPerformed ? pendingSegments.length : 0,
       processingMs: Date.now() - started
     };
 
     const archived = await archiveChunk(body, client, tr.text, results, metadata);
     const speakerArchive = await archiveSpeakerSegments(body, tr.segments);
+
+    if (analysisPerformed && body.sessionId && results.length) {
+      try {
+        await callAdminRpc("detektor_retime_batch_claims", {
+          p_session_id:String(body.sessionId),
+          p_results:results,
+          p_audio_duration_ms:Number.isFinite(Number(body.audioDurationMs)) ? Number(body.audioDurationMs) : 40000
+        });
+      } catch (e) {
+        console.error("CLAIM_RETIME_ERROR", e instanceof Error ? e.message : String(e));
+      }
+    }
 
     let credits: any = null;
     if (billingClientInstallId) {
@@ -885,10 +1003,12 @@ Deno.serve(async (req: Request) => {
         p_session_id: body.sessionId || null,
         p_seconds: usageSeconds,
         p_metadata: {
-          sequenceNo: Number(body.sequenceNo || 0),
+          sequenceNo,
           transcribeModel: tr.model || null,
           transcriptionUsage: tr.usage || null,
+          analysisPerformed,
           claimExtractionUsage: ex.usage || null,
+          verificationUsage: verified.usage || null,
           costControl: verified.metrics || null
         }
       });
@@ -900,7 +1020,9 @@ Deno.serve(async (req: Request) => {
           p_metadata: {
             transcribeModel: tr.model || null,
             transcriptionUsage: tr.usage || null,
+            analysisPerformed,
             claimExtractionUsage: ex.usage || null,
+            verificationUsage: verified.usage || null,
             costControl: verified.metrics || null
           }
         });
@@ -913,12 +1035,20 @@ Deno.serve(async (req: Request) => {
     }
 
     return reply({
+      sequenceNo,
       transcript: tr.text,
       speakerSegments: tr.segments,
       diarized: tr.diarized === true,
       participants: ex.participants || [],
       claims: results,
+      analysisPerformed,
+      analysisEvery,
       costControl: verified.metrics,
+      usageTelemetry:{
+        transcription:tr.usage || null,
+        extraction:ex.usage || null,
+        verification:verified.usage || null
+      },
       processingMs: Date.now() - started,
       archived,
       speakerArchive,
