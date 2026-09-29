@@ -397,6 +397,7 @@ async function startCaptureForTab(tab) {
     rollingTranscript: '',
     speakerProfiles: [],
     detectedParticipants: [],
+    detectedSpeakerLabels: [],
     processingState: { phase: 'listening', error: null },
     captureState: {
       active: true,
@@ -880,6 +881,15 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       }
       await appendClaims(msg.payload, msg.tabId);
 
+      if (Array.isArray(msg.payload?.speakerSegments) && msg.payload.speakerSegments.length) {
+        const labels=[...new Set(
+          msg.payload.speakerSegments
+            .map(x=>String(x?.speaker||'').trim())
+            .filter(Boolean)
+        )].slice(0,8);
+        if(labels.length) await chrome.storage.local.set({detectedSpeakerLabels:labels});
+      }
+
       if (Array.isArray(msg.payload?.participants) && msg.payload.participants.length) {
         const { detectedParticipants = [] } = await chrome.storage.local.get('detectedParticipants');
         const merged = Array.isArray(detectedParticipants) ? [...detectedParticipants] : [];
@@ -893,6 +903,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           ) === key);
           const item = {
             displayName:name,
+            speakerKey:p?.speakerKey == null ? null : String(p.speakerKey).trim() || null,
             role:p?.role === 'moderator' ? 'moderator' : 'participant',
             source:p?.source || 'intro',
             confidence:Number.isFinite(Number(p?.confidence)) ? Number(p.confidence) : null
