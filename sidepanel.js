@@ -178,6 +178,7 @@ async function render(){
   $('privacyAcceptBtn').textContent=t('privacyAccept');
   $('privacyCancelBtn').textContent=t('privacyCancel');
   $('privacyInfoBtn').textContent=t('privacyInfo');
+  const versionEl=$('extensionVersion'); if(versionEl) versionEl.textContent='v'+chrome.runtime.getManifest().version;
 
   const credit=state.creditState||{};
   const available=Number(credit.availableCredits??credit.balanceCredits);
