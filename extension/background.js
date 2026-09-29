@@ -157,7 +157,7 @@ async function profileBackend(action,extra={}){
   });
   const data=await res.json().catch(()=>({}));
   if(!res.ok)throw new Error(data?.userMessage||data?.error||'Nastavenie účtu zlyhalo.');
-  if(data?.account)await chrome.storage.local.set({authState:data.account});
+  if(data?.account)await chrome.storage.local.set({authState:toPublicAccount(data.account)});
   return data;
 }
 
