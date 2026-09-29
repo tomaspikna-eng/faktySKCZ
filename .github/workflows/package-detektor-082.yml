@@ -1,0 +1,28 @@
+name: Package DETEKTOR 0.8.2
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/package-detektor-082.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate manifest
+        run: python -m json.tool extension/manifest.json > /dev/null
+      - name: Build ZIP
+        run: |
+          cd extension
+          zip -9 -r ../DETEKTOR-0.8.2-Chrome.zip manifest.json background.js offscreen.html offscreen.js sidepanel.html sidepanel.css sidepanel.js icons
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DETEKTOR-0.8.2-Chrome
+          path: DETEKTOR-0.8.2-Chrome.zip
+          retention-days: 1
