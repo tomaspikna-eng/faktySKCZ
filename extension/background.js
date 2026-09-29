@@ -65,6 +65,15 @@ function toPublicAccount(account){
   };
 }
 
+chrome.runtime.onInstalled.addListener(async()=>{
+  try{
+    const {authState=null}=await chrome.storage.local.get('authState');
+    if(authState){
+      await chrome.storage.local.set({authState:toPublicAccount(authState)});
+    }
+  }catch{}
+});
+
 async function getValidAuthSession(){
   const {authSession=null}=await chrome.storage.local.get('authSession');
   if(!authSession?.accessToken)return null;
