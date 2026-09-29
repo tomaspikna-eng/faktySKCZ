@@ -71,22 +71,17 @@ async function transcribe(audioBase64: string, mimeType: string, speakerProfiles
   const known = Array.isArray(speakerProfiles)
     ? speakerProfiles.slice(0,4).filter((x:any)=>x?.speakerKey && x?.referenceDataUrl)
     : [];
-  const diarize = known.length > 0;
-  const model = diarize
-    ? (Deno.env.get("DIARIZE_MODEL") || "gpt-4o-transcribe-diarize")
-    : (Deno.env.get("TRANSCRIBE_MODEL") || "gpt-4o-mini-transcribe");
+  const diarize = true;
+  const model = Deno.env.get("DIARIZE_MODEL") || "gpt-4o-transcribe-diarize";
 
   const form = new FormData();
   form.append("file", new Blob([decode64(audioBase64)], { type: mimeType || "audio/webm" }), "audio.webm");
   form.append("model", model);
-
-  if (diarize) {
-    form.append("response_format", "diarized_json");
-    form.append("chunking_strategy", "auto");
-    for (const p of known) {
-      form.append("known_speaker_names[]", String(p.speakerKey));
-      form.append("known_speaker_references[]", String(p.referenceDataUrl));
-    }
+  form.append("response_format", "diarized_json");
+  form.append("chunking_strategy", "auto");
+  for (const p of known) {
+    form.append("known_speaker_names[]", String(p.speakerKey));
+    form.append("known_speaker_references[]", String(p.referenceDataUrl));
   }
 
   const r = await fetch("https://api.openai.com/v1/audio/transcriptions", {
@@ -152,11 +147,13 @@ async function extractClaims(transcript: string, contextBefore: string, segments
     "\n---\nPREVIOUS CONTEXT (for resolving references only; do not extract old claims):\n---\n" +
     (contextBefore || "(none)") +
     "\n---\nCURRENT SEGMENT WITH OPTIONAL SPEAKER LABELS:\n---\n" + diarizedText + "\n---\n" +
-    "Return JSON only: {\"claims\":[{\"claim\":\"self-contained claim\",\"speakerKey\":\"speaker label or null\"}],\"participants\":[{\"displayName\":\"full name\",\"role\":\"participant|moderator\",\"source\":\"metadata|intro\",\"confidence\":0}]}. " +
+    "Return JSON only: {\"claims\":[{\"claim\":\"self-contained claim\",\"speakerKey\":\"speaker label or null\"}],\"participants\":[{\"displayName\":\"explicitly identified name\",\"speakerKey\":\"speaker label or null\",\"role\":\"participant|moderator\",\"source\":\"metadata|intro|direct_address\",\"confidence\":0}]}. " +
     "Extract only claims actually asserted in CURRENT SEGMENT that are concrete and externally verifiable. " +
     "If speaker labels are present in square brackets, preserve the exact label of the person who asserted the claim. " +
-    "Extract a participant only when the person's name is explicitly present in PAGE/VIDEO METADATA or they are explicitly introduced in CURRENT SEGMENT (for example 'vítam ...', 'mojím hosťom je ...', 'diskutujú ...'). " +
-    "Use role moderator only when explicitly clear; otherwise use participant. Do not infer identity from voice, political affiliation, or topic. " +
+    "Extract a participant only when the person is clearly taking part in this debate and their name is explicit in PAGE/VIDEO METADATA, explicitly introduced in CURRENT SEGMENT (for example 'vítam ...', 'mojím hosťom je ...', 'diskutujú ...'), or directly addressed in-studio by name with clear conversational evidence that they are present. " +
+    "A person who is merely mentioned as a subject of discussion is NOT a participant. Never turn references to absent politicians, officials or other people into participants. " +
+    "If diarization labels are present, set participant speakerKey to the exact label only when the current audio unambiguously links that named participant to that voice; otherwise use null. " +
+    "Use role moderator only when explicitly clear; otherwise use participant. Do not infer identity from voice, political affiliation, office, topic, or general knowledge. " +
     "Do not repeat the same participant. Confidence is confidence that the name/role was explicitly identified, not a political score. " +
     "Never infer a person's real identity from wording or political context. If attribution is ambiguous, speakerKey must be null. " +
     "Rewrite pronouns or vague references into a self-contained claim only when the referent is explicit in PREVIOUS CONTEXT. " +
@@ -188,8 +185,9 @@ async function extractClaims(transcript: string, contextBefore: string, segments
     const participants = Array.isArray(p.participants)
       ? p.participants.slice(0,8).map((x:any)=>({
           displayName:String(x?.displayName || "").trim(),
+          speakerKey:x?.speakerKey == null ? null : String(x.speakerKey).trim() || null,
           role:x?.role === "moderator" ? "moderator" : "participant",
-          source:x?.source === "metadata" ? "metadata" : "intro",
+          source:["metadata","intro","direct_address"].includes(String(x?.source)) ? String(x.source) : "intro",
           confidence:Number.isFinite(Number(x?.confidence)) ? Math.max(0,Math.min(100,Math.round(Number(x.confidence)))) : null
         })).filter((x:any)=>x.displayName.length >= 3)
       : [];
