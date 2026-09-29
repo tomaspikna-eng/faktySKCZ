@@ -233,15 +233,16 @@ async function processAudioRequest(payload, tabId) {
       base64Length: payload?.audioBase64?.length || 0
     });
 
-    const { rollingTranscript = '', captureState = {}, speakerProfiles = [] } =
-      await chrome.storage.local.get(['rollingTranscript','captureState','speakerProfiles']);
+    const { rollingTranscript = '', captureState = {}, speakerProfiles = [], analysisPendingSegments = [] } =
+      await chrome.storage.local.get(['rollingTranscript','captureState','speakerProfiles','analysisPendingSegments']);
     const clientInstallId=await getClientInstallId();
     const authSession=await getValidAuthSession();
     const requestPayload = {
       ...(payload || {}),
       clientInstallId,
       accessToken:authSession?.accessToken||null,
-      contextBefore: String(rollingTranscript || '').slice(-2500),
+      contextBefore: String(rollingTranscript || '').slice(-600),
+      pendingSegments: Array.isArray(analysisPendingSegments) ? analysisPendingSegments.slice(-5) : [],
       sessionId: payload?.sessionId || captureState.sessionId || null,
       sourceUrl: captureState.url || '',
       mediaTitle: captureState.title || '',
@@ -281,7 +282,23 @@ async function processAudioRequest(payload, tabId) {
 
     if (data?.transcript) {
       const combined = (String(rollingTranscript || '') + '\n' + String(data.transcript)).trim();
-      await chrome.storage.local.set({ rollingTranscript: combined.slice(-2500) });
+      const compactSpeakerText = Array.isArray(data?.speakerSegments) && data.speakerSegments.length
+        ? data.speakerSegments.map(s => '[' + String(s?.speaker || 'unknown') + '] ' + String(s?.text || '')).join('\n')
+        : String(data.transcript);
+      const currentSegment = {
+        sequenceNo: Number.isFinite(Number(data?.sequenceNo)) ? Number(data.sequenceNo) : Number(payload?.sequenceNo || 0),
+        text: String(data.transcript).slice(0,2600),
+        speakerText: compactSpeakerText.slice(0,3200)
+      };
+      const nextPending = data?.analysisPerformed === true
+        ? []
+        : [...(Array.isArray(analysisPendingSegments) ? analysisPendingSegments : []), currentSegment].slice(-5);
+      await chrome.storage.local.set({
+        rollingTranscript: combined.slice(-2500),
+        analysisPendingSegments: nextPending
+      });
+    } else if (data?.analysisPerformed === true) {
+      await chrome.storage.local.set({analysisPendingSegments:[]});
     }
     if(data?.credits) await chrome.storage.local.set({creditState:data.credits});
 
@@ -395,6 +412,7 @@ async function startCaptureForTab(tab) {
   await chrome.storage.local.set({
     sessionClaims: [],
     rollingTranscript: '',
+    analysisPendingSegments: [],
     speakerProfiles: [],
     detectedParticipants: [],
     detectedSpeakerLabels: [],
@@ -884,7 +902,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       if (Array.isArray(msg.payload?.speakerSegments) && msg.payload.speakerSegments.length) {
         const labels=[...new Set(
           msg.payload.speakerSegments
-            .map(x=>String(x?.speaker||'').trim())
+            .map(x=>String(x?.speakerLabel||x?.speaker||'').trim().split(':').pop())
             .filter(Boolean)
         )].slice(0,8);
         if(labels.length) await chrome.storage.local.set({detectedSpeakerLabels:labels});
