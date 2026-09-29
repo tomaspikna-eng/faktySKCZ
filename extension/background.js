@@ -1,6 +1,19 @@
 const OFFSCREEN_URL = 'offscreen.html';
 const FUNCTION_URL = 'https://mexrrchqiehzvrefftym.supabase.co/functions/v1/process-audio';
 const OVERLAY_API_URL = 'https://mexrrchqiehzvrefftym.supabase.co/functions/v1/overlay-api';
+
+function normalizeOverlayUrl(value){
+  try{
+    const u=new URL(String(value||''));
+    if(u.hostname==='mexrrchqiehzvrefftym.supabase.co' && u.pathname==='/overlay-api'){
+      u.pathname='/functions/v1/overlay-api';
+    }
+    u.protocol='https:';
+    return u.toString();
+  }catch{
+    return String(value||'');
+  }
+}
 const PUBLISHABLE_KEY = 'sb_publishable_NZCEN4vfkbyxQrzCa8YR8Q_i4ZQCH2T';
 const AUTH_URL = 'https://mexrrchqiehzvrefftym.supabase.co/auth/v1';
 const BACKEND_TIMEOUT_MS = 120000;
@@ -372,8 +385,8 @@ async function createStreamOverlay({ sessionId, sourceUrl, mediaTitle, startedAt
   return {
     token:data.token,
     expiresAt:data.expiresAt,
-    factcheckUrl:data.factcheckUrl,
-    scoreboardUrl:data.scoreboardUrl
+    factcheckUrl:normalizeOverlayUrl(data.factcheckUrl),
+    scoreboardUrl:normalizeOverlayUrl(data.scoreboardUrl)
   };
 }
 
