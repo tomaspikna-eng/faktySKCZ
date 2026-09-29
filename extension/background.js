@@ -56,6 +56,15 @@ async function clearAuthSession(){
   await chrome.storage.local.remove(['authSession','authState']);
 }
 
+function toPublicAccount(account){
+  if(!account?.id)return null;
+  const displayName=String(account?.displayName||'').trim();
+  return {
+    id:account.id,
+    displayName:displayName && !displayName.includes('@') ? displayName : null
+  };
+}
+
 async function getValidAuthSession(){
   const {authSession=null}=await chrome.storage.local.get('authSession');
   if(!authSession?.accessToken)return null;
@@ -94,7 +103,7 @@ async function bindAccount(session){
   const data=await res.json().catch(()=>({}));
   if(!res.ok)throw new Error(data?.userMessage||data?.error||'Prepojenie účtu zlyhalo.');
   if(data?.credits)await chrome.storage.local.set({creditState:data.credits});
-  if(data?.account)await chrome.storage.local.set({authState:data.account});
+  if(data?.account)await chrome.storage.local.set({authState:toPublicAccount(data.account)});
   return data;
 }
 
@@ -161,7 +170,7 @@ async function fetchAuthState(){
     const next={...session,user};
     await chrome.storage.local.set({authSession:next});
     const profile=await profileBackend('profile_get');
-    const account=profile?.account||{id:user?.id||null,displayName:null};
+    const account=toPublicAccount(profile?.account)||{id:user?.id||null,displayName:null};
     await chrome.storage.local.set({authState:account});
     return account;
   }catch{
@@ -190,7 +199,7 @@ async function fetchCreditStatus(){
     await clearAuthSession();
   }
   if(res.ok&&data?.credits)await chrome.storage.local.set({creditState:data.credits});
-  if(res.ok)await chrome.storage.local.set({authState:data?.account||null});
+  if(res.ok)await chrome.storage.local.set({authState:toPublicAccount(data?.account)});
   return data?.credits||null;
 }
 
@@ -630,6 +639,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       try{
         const displayName=String(msg.displayName||'').trim();
         if(displayName.length<2||displayName.length>40)throw new Error('Zobrazované meno musí mať 2 až 40 znakov.');
+        if(displayName.includes('@'))throw new Error('Zobrazované meno nesmie byť emailová adresa.');
         const data=await profileBackend('profile_update',{displayName});
         sendResponse({ok:true,account:data?.account||null});
       }catch(e){sendResponse({ok:false,error:e?.message||String(e)})}
