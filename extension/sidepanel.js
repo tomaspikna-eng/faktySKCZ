@@ -43,7 +43,7 @@ const dict = {
     actorsNote:'Procenta zobrazují pouze rozdělení fact-checkovaných tvrzení v této relaci. Nejde o hodnocení osoby.',
     checkedClaims:'Fact-checkovaná tvrzení', actorWaiting:'Čekám na přiřazené výroky účastníků…',
     participant:'Účastník', moderator:'Moderátor', captureVoice:'Zachytit hlas', capturing:'Nahrávám 3 s…', voiceReady:'Hlas uložen',
-    credits:'Detektory', billingTest:'TEST režim · kredity se zatím neodečítají', billingLive:'Kredity se odečítají podle používání',
+    credits:'Detektory', billingTest:'TEST režim · kredity se zatiaľ neodečítajú', billingLive:'Kredity se odečítají podle používání',
     privacyTitle:'Před prvním LIVE ověřováním',
     privacyBody:'DETEKTOR po spuštění zachytává zvuk aktuální karty a odešle ho ke zabezpečenému serverovému zpracování za účelem přepisu a fact-checkingu.',
     privacyDetail:'Zpracovávají se také údaje potřebné pro průběh relace, například název a URL aktivní stránky, přepis, tvrzení a technická metadata. Údaje se používají pouze pro poskytování služby DETEKTOR.live.',
@@ -51,6 +51,13 @@ const dict = {
   }
 };
 const t = k => dict[lang][k] || k;
+
+// Public identity must never fall back to or display an email address.
+function publicDisplayName(account){
+  const name=String(account?.displayName||'').trim();
+  if(!name || name.includes('@')) return '';
+  return name;
+}
 
 function mapVerdict(v) {
   const labels = lang === 'cz'
@@ -154,7 +161,6 @@ async function loadActorStats(capture){
   }
 }
 
-
 async function render(){
   const state=await chrome.storage.local.get(['sessionClaims','captureState','processingState','uiLang','speakerProfiles','detectedParticipants','creditState','authState']);
   const claims=Array.isArray(state.sessionClaims)?state.sessionClaims:[];
@@ -183,7 +189,7 @@ async function render(){
   $('authLoggedOut').classList.toggle('hidden',!!account?.id);
   $('authLoggedIn').classList.toggle('hidden',!account?.id);
   $('accountStatus').textContent=account?.id?(lang==='cz'?'Přihlášen':'Prihlásený'):(lang==='cz'?'Nepřihlášen':'Neprihlásený');
-  const displayName=String(account?.displayName||'').trim();
+  const displayName=publicDisplayName(account);
   $('accountDisplayName').textContent=displayName || (lang==='cz'?'Nastav zobrazované jméno':'Nastav zobrazované meno');
   if(document.activeElement!==$('profileDisplayName')) $('profileDisplayName').value=displayName;
 
@@ -423,6 +429,9 @@ chrome.storage.onChanged.addListener((changes)=>{
   }else{
     setTab('actors');
   }
+  // Always refresh the authenticated profile first so a stale authState
+  // cannot leave an old email-looking value on screen.
+  try{await chrome.runtime.sendMessage({type:'GET_AUTH_STATE'});}catch{}
   try{await chrome.runtime.sendMessage({type:'GET_CREDIT_STATUS'});}catch{}
   await render();
 })();
