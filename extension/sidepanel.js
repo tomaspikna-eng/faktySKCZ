@@ -162,7 +162,7 @@ async function loadActorStats(capture){
 }
 
 async function render(){
-  const state=await chrome.storage.local.get(['sessionClaims','captureState','processingState','uiLang','speakerProfiles','detectedParticipants','creditState','authState']);
+  const state=await chrome.storage.local.get(['sessionClaims','captureState','processingState','uiLang','speakerProfiles','detectedParticipants','detectedSpeakerLabels','creditState','authState']);
   const claims=Array.isArray(state.sessionClaims)?state.sessionClaims:[];
   const capture=state.captureState||{};
   const proc=state.processingState||{};
@@ -206,6 +206,10 @@ async function render(){
   }
 
   const profiles=Array.isArray(state.speakerProfiles)?state.speakerProfiles:[];
+  const speakerLabels=Array.isArray(state.detectedSpeakerLabels)?state.detectedSpeakerLabels:[];
+  $('autoSpeakerState').textContent=speakerLabels.length
+    ? (lang==='cz'?'Automaticky rozpoznané hlasy: ':'Automaticky rozpoznané hlasy: ')+speakerLabels.join(', ')
+    : (lang==='cz'?'Čekám na rozlišení hlasů…':'Čakám na rozlíšenie hlasov…');
   const detected=Array.isArray(state.detectedParticipants)?state.detectedParticipants:[];
   const assignedNames=new Set(profiles.map(x=>String(x?.displayName||'').toLowerCase()));
   const freeDetected=detected.filter(x=>!assignedNames.has(String(x?.displayName||'').toLowerCase()));
