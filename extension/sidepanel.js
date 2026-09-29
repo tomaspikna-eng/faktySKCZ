@@ -59,6 +59,19 @@ function publicDisplayName(account){
   return name;
 }
 
+function normalizeOverlayUrl(value){
+  try{
+    const u=new URL(String(value||''));
+    if(u.hostname==='mexrrchqiehzvrefftym.supabase.co' && u.pathname==='/overlay-api'){
+      u.pathname='/functions/v1/overlay-api';
+    }
+    u.protocol='https:';
+    return u.toString();
+  }catch{
+    return String(value||'');
+  }
+}
+
 function mapVerdict(v) {
   const labels = lang === 'cz'
     ? {true:'PRAVDIVÉ',mostly_true:'PŘEVÁŽNĚ PRAVDIVÉ',misleading:'ZAVÁDĚJÍCÍ',false:'NEPRAVDIVÉ',unverified:'NEOVĚŘENÉ'}
@@ -139,7 +152,7 @@ function actorCard(p){
 
 async function loadActorStats(capture){
   const box=$('actorsList');
-  const url=capture?.streamOverlay?.scoreboardUrl||'';
+  const url=normalizeOverlayUrl(capture?.streamOverlay?.scoreboardUrl||'');
   if(!url){
     box.innerHTML=empty(t('actorWaiting'));
     return;
@@ -197,8 +210,8 @@ async function render(){
   const overlay=capture.streamOverlay||null;
   if(overlay?.factcheckUrl&&overlay?.scoreboardUrl){
     $('streamBox').classList.remove('hidden');
-    $('factOverlayUrl').value=overlay.factcheckUrl;
-    $('scoreOverlayUrl').value=overlay.scoreboardUrl;
+    $('factOverlayUrl').value=normalizeOverlayUrl(overlay.factcheckUrl);
+    $('scoreOverlayUrl').value=normalizeOverlayUrl(overlay.scoreboardUrl);
   }else{
     $('streamBox').classList.add('hidden');
     $('factOverlayUrl').value='';
