@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "DETEKTOR",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "description": "DETEKTOR — Live CZ/SK fact-checking v bočnom paneli.",
   "minimum_chrome_version": "116",
   "permissions": [
